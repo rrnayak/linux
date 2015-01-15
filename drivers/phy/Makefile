@@ -24,3 +24,4 @@ obj-y					+= broadcom/	\
 					   st/		\
 					   ti/
 obj-$(CONFIG_PHY_QCOM_UFS) 	+= phy-qcom-ufs.o
+obj-$(CONFIG_PHY_QCOM_UFS) 	+= phy-qcom-ufs-qmp-20nm.o
