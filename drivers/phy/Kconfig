@@ -57,4 +57,11 @@ source "drivers/phy/st/Kconfig"
 source "drivers/phy/tegra/Kconfig"
 source "drivers/phy/ti/Kconfig"
 
+config PHY_QCOM_UFS
+	tristate "Qualcomm UFS PHY driver"
+	depends on OF && ARCH_MSM
+	select GENERIC_PHY
+	help
+	  Support for UFS PHY on QCOM chipsets.
+
 endmenu

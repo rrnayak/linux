@@ -23,3 +23,4 @@ obj-y					+= broadcom/	\
 					   samsung/	\
 					   st/		\
 					   ti/
+obj-$(CONFIG_PHY_QCOM_UFS) 	+= phy-qcom-ufs.o
