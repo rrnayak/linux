@@ -14,8 +14,10 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/spmi.h>
+#include <linux/reboot.h>
 #include <linux/regmap.h>
 #include <linux/of_platform.h>
+#include <linux/slab.h>
 
 #define PMIC_REV2		0x101
 #define PMIC_REV3		0x102
@@ -43,6 +45,26 @@
 #define PMI8998_SUBTYPE		0x15
 #define PM8005_SUBTYPE		0x18
 
+struct spmi_shutdown {
+	struct notifier_block nb;
+	struct regmap *map;
+};
+
+static int pmic_spmi_shutdown(struct notifier_block *this,
+				unsigned long mode, void *cmd)
+{
+	struct spmi_shutdown *spmi_sd = container_of(this, struct spmi_shutdown, nb);
+	struct regmap *map = spmi_sd->map;
+
+	if (mode == SYS_POWER_OFF) {
+		/* PS_HOLD "shutdown" */
+		regmap_write(map, 0x85a, 0x4);
+		regmap_write(map, 0x85b, BIT(7));
+	}
+
+	return 0;
+}
+
 static const struct of_device_id pmic_spmi_id_table[] = {
 	{ .compatible = "qcom,spmi-pmic", .data = (void *)COMMON_SUBTYPE },
 	{ .compatible = "qcom,pm8941",    .data = (void *)PM8941_SUBTYPE },
@@ -69,6 +91,7 @@ static void pmic_spmi_show_revid(struct regmap *map, struct device *dev)
 	unsigned int rev2, minor, major, type, subtype;
 	const char *name = "unknown";
 	int ret, i;
+	struct spmi_shutdown *spmi_sd;
 
 	ret = regmap_read(map, PMIC_TYPE, &type);
 	if (ret < 0)
@@ -113,6 +136,30 @@ static void pmic_spmi_show_revid(struct regmap *map, struct device *dev)
 
 	if (subtype == PM8110_SUBTYPE)
 		minor = rev2;
+
+	/* USID is 0 */
+	if (subtype == PM8998_SUBTYPE) {
+		regmap_write(map, 0x874, 0x2);
+		regmap_write(map, 0x875, 0x0);
+		regmap_write(map, 0x844, 0x0);
+		regmap_write(map, 0x845, 0x0);
+		regmap_write(map, 0x846, 0x1);
+		regmap_write(map, 0x847, BIT(7));
+		regmap_write(map, 0x848, 0x0);
+		regmap_write(map, 0x849, 0x0);
+		regmap_write(map, 0x84a, 0x4);
+		regmap_write(map, 0x84b, BIT(7));
+		regmap_write(map, 0x85a, 0x1); /* PS_HOLD "warm_reset" by default */
+		regmap_write(map, 0x85b, BIT(7));
+
+		spmi_sd = kzalloc(sizeof(*spmi_sd), GFP_KERNEL);
+		if (spmi_sd) {
+			spmi_sd->map = map;
+			spmi_sd->nb.notifier_call = pmic_spmi_shutdown;
+			spmi_sd->nb.priority = 129;
+			register_reboot_notifier(&spmi_sd->nb);
+		}
+	}
 
 	dev_dbg(dev, "%x: %s v%d.%d\n", subtype, name, major, minor);
 }

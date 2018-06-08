@@ -573,7 +573,7 @@ drm_gtf_mode(struct drm_device *dev, int hdisplay, int vdisplay, int vrefresh,
 }
 EXPORT_SYMBOL(drm_gtf_mode);
 
-#ifdef CONFIG_VIDEOMODE_HELPERS
+//#ifdef CONFIG_VIDEOMODE_HELPERS
 /**
  * drm_display_mode_from_videomode - fill in @dmode using @vm,
  * @vm: videomode structure to use as source
@@ -724,7 +724,7 @@ int of_get_drm_display_mode(struct device_node *np,
 }
 EXPORT_SYMBOL_GPL(of_get_drm_display_mode);
 #endif /* CONFIG_OF */
-#endif /* CONFIG_VIDEOMODE_HELPERS */
+//#endif /* CONFIG_VIDEOMODE_HELPERS */
 
 /**
  * drm_mode_set_name - set the name on a mode

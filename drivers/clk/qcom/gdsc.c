@@ -12,6 +12,8 @@
  */
 
 #include <linux/bitops.h>
+#include <linux/clk.h>
+#include <linux/clk-provider.h>
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/jiffies.h>
@@ -208,10 +210,40 @@ static inline void gdsc_assert_reset_aon(struct gdsc *sc)
 	regmap_update_bits(sc->regmap, sc->clamp_io_ctrl,
 			   GMEM_RESET_MASK, 0);
 }
+
+static int gdsc_clk_prepare_enable(struct gdsc *sc)
+{
+	int i, ret;
+
+	for (i = 0; i < sc->clk_count; i++) {
+		ret = clk_prepare_enable(sc->clk_hws[i]->clk);
+		if (ret) {
+			for (i--; i >= 0; i--)
+				clk_disable_unprepare(sc->clk_hws[i]->clk);
+			return ret;
+		}
+	}
+	return 0;
+}
+
+static void gdsc_clk_disable_unprepare(struct gdsc *sc)
+{
+	int i;
+
+	for (i = 0; i < sc->clk_count; i++)
+		clk_disable_unprepare(sc->clk_hws[i]->clk);
+}
+
 static int gdsc_enable(struct generic_pm_domain *domain)
 {
 	struct gdsc *sc = domain_to_gdsc(domain);
 	int ret;
+
+	if (sc->clk_count) {
+		ret = gdsc_clk_prepare_enable(sc);
+		if (ret)
+			return ret;
+	}
 
 	if (sc->pwrsts == PWRSTS_ON)
 		return gdsc_deassert_reset(sc);
@@ -260,6 +292,9 @@ static int gdsc_enable(struct generic_pm_domain *domain)
 		udelay(1);
 	}
 
+	if (sc->clk_count)
+		gdsc_clk_disable_unprepare(sc);
+
 	return 0;
 }
 
@@ -267,6 +302,12 @@ static int gdsc_disable(struct generic_pm_domain *domain)
 {
 	struct gdsc *sc = domain_to_gdsc(domain);
 	int ret;
+
+	if (sc->clk_count) {
+		ret = gdsc_clk_prepare_enable(sc);
+		if (ret)
+			return ret;
+	}
 
 	if (sc->pwrsts == PWRSTS_ON)
 		return gdsc_assert_reset(sc);
@@ -298,6 +339,9 @@ static int gdsc_disable(struct generic_pm_domain *domain)
 
 	if (sc->flags & CLAMP_IO)
 		gdsc_assert_clamp_io(sc);
+
+	if (sc->clk_count)
+		gdsc_clk_disable_unprepare(sc);
 
 	return 0;
 }

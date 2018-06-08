@@ -31,8 +31,19 @@ void ufs_qcom_phy_enable_dev_ref_clk(struct phy *phy);
  */
 void ufs_qcom_phy_disable_dev_ref_clk(struct phy *phy);
 
+#ifdef PHY_QCOM_UFS
 int ufs_qcom_phy_set_tx_lane_enable(struct phy *phy, u32 tx_lanes);
 void ufs_qcom_phy_save_controller_version(struct phy *phy,
 			u8 major, u16 minor, u16 step);
+#else
+static inline int ufs_qcom_phy_set_tx_lane_enable(struct phy *phy, u32 tx_lanes)
+{
+	return -ENOSYS;
+}
+static inline void ufs_qcom_phy_save_controller_version(struct phy *phy,
+			u8 major, u16 minor, u16 step)
+{
+}
+#endif /* PHY_QCOM_UFS */
 
 #endif /* PHY_QCOM_UFS_H_ */

@@ -1,0 +1,36 @@
+QTI [Qualcomm Technologies Inc] Quad Serial Peripheral Interface (QSPI)
+
+QSPI [Quad Serial Peripheral Interface] allows single dual and quad read/write
+access to slaves. QTI's QSPI controller implements the QSPI protocol to interface
+with slaves like NOR Flash devices.
+
+Required properties:
+- compatible:	Should contain:
+		"qcom,qspi-v1"
+- reg:		Contains the base register location and length
+- interrupts:	Interrupt number used by the controller.
+- clocks:	Contains the core and AHB clock names.
+- clock-names:	"core" for core clock and "iface" for AHB clock.
+- spi-max-frequency:	Maximum SPI core clock frequency in Hz.
+
+SPI slave nodes must be children of the SPI master node and can contain
+properties described in Documentation/devicetree/bindings/spi/spi-bus.txt
+
+Example:
+
+	qspi: qspi@7418000 {
+		compatible = "qcom,qspi-v1";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x7418000 0x600>;
+		interrupts = <0 459 0>;
+		clock-names = "iface", "core";
+		clocks = <&clock_gcc clk_gcc_qspi_ahb_clk>,
+			 <&clock_gcc clk_gcc_qspi_ser_clk>;
+
+		device@0 {
+			compatible = "dummy_device";
+			reg = <x>; /* CS for the device */
+			spi-max-frequency = <f>; /* Max supported frequency of the slave (Hz) */
+		};
+	};

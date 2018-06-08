@@ -626,6 +626,19 @@ static void msm_gpio_irq_mask(struct irq_data *d)
 	raw_spin_lock_irqsave(&pctrl->lock, flags);
 
 	val = readl(pctrl->regs + g->intr_cfg_reg);
+	/*
+	 * Leaving the RAW_STATUS_EN bit enabled causes level interrupts that
+	 * are still asserted to re-latch after we ack them. Clear the raw
+	 * status enable bit too so the interrupt can't even latch into the
+	 * hardware while it's masked, but only do this for level interrupts
+	 * because edge interrupts have a problem with the raw status bit
+	 * toggling and causing spurious interrupts.
+	 */
+	if (irqd_get_trigger_type(d) & IRQ_TYPE_LEVEL_MASK) {
+		val &= ~BIT(g->intr_raw_status_bit);
+		writel(val, pctrl->regs + g->intr_cfg_reg);
+	}
+
 	val &= ~BIT(g->intr_enable_bit);
 	writel(val, pctrl->regs + g->intr_cfg_reg);
 
@@ -647,6 +660,10 @@ static void msm_gpio_irq_unmask(struct irq_data *d)
 	raw_spin_lock_irqsave(&pctrl->lock, flags);
 
 	val = readl(pctrl->regs + g->intr_cfg_reg);
+	if (irqd_get_trigger_type(d) & IRQ_TYPE_LEVEL_MASK) {
+		val |= BIT(g->intr_raw_status_bit);
+		writel(val, pctrl->regs + g->intr_cfg_reg);
+	}
 	val |= BIT(g->intr_enable_bit);
 	writel(val, pctrl->regs + g->intr_cfg_reg);
 

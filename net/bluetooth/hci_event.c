@@ -4773,7 +4773,7 @@ static void process_adv_report(struct hci_dev *hdev, u8 type, bdaddr_t *bdaddr,
 
 	/* Adjust for actual length */
 	if (len != real_len) {
-		bt_dev_err_ratelimited(hdev, "advertising data len corrected");
+		bt_dev_dbg(hdev, "advertising data len corrected");
 		len = real_len;
 	}
 
@@ -5218,7 +5218,7 @@ static bool hci_get_cmd_complete(struct hci_dev *hdev, u16 opcode,
 	}
 
 	if (hdr->evt != HCI_EV_CMD_COMPLETE) {
-		bt_dev_err(hdev, "last event is not cmd complete (0x%2.2x)",
+		bt_dev_dbg(hdev, "last event is not cmd complete (0x%2.2x)",
 			   hdr->evt);
 		return false;
 	}

@@ -1,0 +1,3 @@
+
+qcom,ipa : IPA A7 core driver
+qcom,rmnet-ipa3 : IPA rmnet driver

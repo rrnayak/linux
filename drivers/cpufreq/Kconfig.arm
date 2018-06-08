@@ -312,3 +312,31 @@ config ARM_PXA2xx_CPUFREQ
 	  This add the CPUFreq driver support for Intel PXA2xx SOCs.
 
 	  If in doubt, say N.
+
+config ACPI_CPPC_CPUFREQ
+	tristate "CPUFreq driver based on the ACPI CPPC spec"
+	depends on ACPI_PROCESSOR
+	select ACPI_CPPC_LIB
+	default n
+	help
+	  This adds a CPUFreq driver which uses CPPC methods
+	  as described in the ACPIv5.1 spec. CPPC stands for
+	  Collaborative Processor Performance Controls. It
+	  is based on an abstract continuous scale of CPU
+	  performance values which allows the remote power
+	  processor to flexibly optimize for power and
+	  performance. CPPC relies on power management firmware
+	  support for its operation.
+
+	  If in doubt, say N.
+
+config ARM_QCOM_CPUFREQ_HW
+	bool "QCOM CPUFreq HW driver"
+	depends on ARCH_QCOM
+	help
+	 Support for the CPUFreq HW driver.
+	 Some QCOM chipsets have a HW engine to offload the steps
+	 necessary for changing the frequency of the CPUs. Firmware loaded
+	 in this engine exposes a programming interface to the OS.
+	 The driver implements the cpufreq interface for this HW engine.
+	 Say Y if you want to support CPUFreq HW.

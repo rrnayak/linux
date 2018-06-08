@@ -736,6 +736,15 @@ config LEDS_MLXREG
 	  device add call. Say Y to enable these. To compile this driver as a
 	  module, choose 'M' here: the module will be called leds-mlxreg.
 
+config LEDS_QPNP_WLED
+	tristate "Support for QPNP WLED"
+	depends on LEDS_CLASS && SPMI
+	help
+	  This driver supports the WLED (White LED) functionality of Qualcomm
+	  Technologies, Inc. QPNP PMICs.  WLED is used for LCD backlight with
+	  variable brightness.  It also supports outputting the Avdd supply for
+	  AMOLED displays.
+
 config LEDS_USER
 	tristate "Userspace LED support"
 	depends on LEDS_CLASS

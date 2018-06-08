@@ -1,0 +1,28 @@
+config IPA
+	tristate "Qualcomm IPA support"
+	depends on NET && QCOM_QMI_HELPERS
+	default n
+	help
+	  Choose Y here to include support for the Qualcomm IP
+	  Accelerator (IPA), a hardware block present in some
+	  Qualcomm SoCs.  The IPA is a programmable protocol
+	  processor that is capable of generic hardware handling
+	  of IP packets, including routing, filtering, and NAT.
+	  Currently the IPA driver supports only basic transport
+	  of network traffic between the AP and modem, on the
+	  Qualcomm SDM845 SoC.
+
+	  If unsure, say N.
+
+config IPA_ASSERT
+	bool "Enable IPA assertions"
+	depends on IPA
+	default y
+	help
+	 Incorporate IPA assertion verification in the build.  This
+	 cause various design assumptions to be checked at runtime,
+	 generating a report (and a crash) if any assumed condition
+	 does not hold.  You may wish to disable this to avoid the
+	 overhead of checking.
+
+	 If unsure doubt, say "Y" here.

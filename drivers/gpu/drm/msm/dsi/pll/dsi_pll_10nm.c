@@ -316,7 +316,7 @@ static int dsi_pll_10nm_vco_set_rate(struct clk_hw *hw, unsigned long rate,
 	    parent_rate);
 
 	pll_10nm->vco_current_rate = rate;
-	pll_10nm->vco_ref_clk_rate = parent_rate;
+	pll_10nm->vco_ref_clk_rate = 19200000;
 
 	dsi_pll_setup_config(pll_10nm);
 

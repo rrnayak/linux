@@ -17,9 +17,23 @@ conditions.
                         "arm,mmu-401"
                         "arm,mmu-500"
                         "cavium,smmu-v2"
+                        "qcom,<soc>-smmu-v2", "qcom,smmu-v2"
+                        "qcom,<soc>-smmu-500", "arm,mmu-500"
 
                   depending on the particular implementation and/or the
                   version of the architecture implemented.
+
+                  A number of Qcom SoCs use qcom,smmu-v2 version of the IP.
+                  "qcom,<soc>-smmu-v2" represents a soc specific compatible
+                  string that should be present along with the "qcom,smmu-v2"
+                  to facilitate SoC specific clocks/power connections and to
+                  address specific bug fixes.
+                  An example string would be -
+                  "qcom,msm8996-smmu-v2", "qcom,smmu-v2".
+
+		  "qcom,<soc>-smmu-500" compatible string represents qcom's soc
+		  specific implementation of arm,mmu-500, and should be present
+		  along with "arm,mmu-500".
 
 - reg           : Base address and size of the SMMU.
 

@@ -378,6 +378,27 @@ enum query_opcode {
 	UPIU_QUERY_OPCODE_TOGGLE_FLAG	= 0x8,
 };
 
+/* bRefClkFreq attribute values */
+enum ref_clk_freq_hz {
+	REF_CLK_FREQ_19_2_MHZ	= 19200000,
+	REF_CLK_FREQ_26_MHZ	= 26000000,
+	REF_CLK_FREQ_38_4_MHZ	= 38400000,
+	REF_CLK_FREQ_52_MHZ	= 52000000,
+};
+
+enum bref_clk_freq {
+	bREF_CLK_FREQ_0, /* 19.2 MHz */
+	bREF_CLK_FREQ_1, /* 26 MHz */
+	bREF_CLK_FREQ_2, /* 38.4 MHz */
+	bREF_CLK_FREQ_3, /* 52 MHz */
+	bREF_CLK_FREQ_INVAL,
+};
+
+struct ufs_ref_clk {
+	enum ref_clk_freq_hz freq_hz;
+	enum bref_clk_freq val;
+};
+
 /* Query response result code */
 enum {
 	QUERY_RESULT_SUCCESS                    = 0x00,
