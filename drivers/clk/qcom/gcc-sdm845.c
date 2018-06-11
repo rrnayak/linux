@@ -1109,6 +1109,7 @@ static struct clk_branch gcc_camera_ahb_clk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(struct clk_init_data){
 			.name = "gcc_camera_ahb_clk",
+			.flags = CLK_IS_CRITICAL,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -1135,6 +1136,7 @@ static struct clk_branch gcc_camera_xo_clk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(struct clk_init_data){
 			.name = "gcc_camera_xo_clk",
+			.flags = CLK_IS_CRITICAL,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -1276,6 +1278,7 @@ static struct clk_branch gcc_disp_ahb_clk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(struct clk_init_data){
 			.name = "gcc_disp_ahb_clk",
+			.flags = CLK_IS_CRITICAL,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -1334,6 +1337,7 @@ static struct clk_branch gcc_disp_xo_clk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(struct clk_init_data){
 			.name = "gcc_disp_xo_clk",
+			.flags = CLK_IS_CRITICAL,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -1403,6 +1407,7 @@ static struct clk_branch gcc_gpu_cfg_ahb_clk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(struct clk_init_data){
 			.name = "gcc_gpu_cfg_ahb_clk",
+			.flags = CLK_IS_CRITICAL,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -3022,6 +3027,7 @@ static struct clk_branch gcc_video_ahb_clk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(struct clk_init_data){
 			.name = "gcc_video_ahb_clk",
+			.flags = CLK_IS_CRITICAL,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -3048,6 +3054,7 @@ static struct clk_branch gcc_video_xo_clk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(struct clk_init_data){
 			.name = "gcc_video_xo_clk",
+			.flags = CLK_IS_CRITICAL,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -3081,6 +3088,36 @@ static struct clk_branch gcc_vs_ctrl_clk = {
 			},
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_cpuss_dvm_bus_clk = {
+	.halt_reg = 0x48190,
+	.halt_check = BRANCH_HALT,
+	.clkr = {
+		.enable_reg = 0x48190,
+		.enable_mask = BIT(0),
+		.hw.init = &(struct clk_init_data){
+			.name = "gcc_cpuss_dvm_bus_clk",
+			.flags = CLK_IS_CRITICAL,
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_cpuss_gnoc_clk = {
+	.halt_reg = 0x48004,
+	.halt_check = BRANCH_HALT_VOTED,
+	.hwcg_reg = 0x48004,
+	.hwcg_bit = 1,
+	.clkr = {
+		.enable_reg = 0x52004,
+		.enable_mask = BIT(22),
+		.hw.init = &(struct clk_init_data){
+			.name = "gcc_cpuss_gnoc_clk",
+			.flags = CLK_IS_CRITICAL,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -3474,10 +3511,6 @@ static int gcc_sdm845_probe(struct platform_device *pdev)
 	/* Disable the GPLL0 active input to MMSS and GPU via MISC registers */
 	regmap_update_bits(regmap, 0x09ffc, 0x3, 0x3);
 	regmap_update_bits(regmap, 0x71028, 0x3, 0x3);
-
-	/* Enable CPUSS clocks */
-	regmap_update_bits(regmap, 0x48190, BIT(0), 0x1);
-	regmap_update_bits(regmap, 0x52004, BIT(22), 0x1);
 
 	return qcom_cc_really_probe(pdev, &gcc_sdm845_desc, regmap);
 }
