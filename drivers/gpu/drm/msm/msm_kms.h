@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -95,6 +96,7 @@ static inline void msm_kms_init(struct msm_kms *kms,
 
 struct msm_kms *mdp4_kms_init(struct drm_device *dev);
 struct msm_kms *mdp5_kms_init(struct drm_device *dev);
+struct msm_kms *dpu_kms_init(struct drm_device *dev);
 
 struct msm_mdss_funcs {
 	int (*enable)(struct msm_mdss *mdss);
@@ -108,5 +110,6 @@ struct msm_mdss {
 };
 
 int mdp5_mdss_init(struct drm_device *dev);
+int dpu_mdss_init(struct drm_device *dev);
 
 #endif /* __MSM_KMS_H__ */

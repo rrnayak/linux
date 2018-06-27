@@ -386,7 +386,6 @@ int dpu_core_perf_crtc_update(struct drm_crtc *crtc,
 	new = &dpu_cstate->new_perf;
 
 	if (_dpu_core_perf_crtc_is_power_on(crtc) && !stop_req) {
-
 			/*
 			 * cases for bus bandwidth update.
 			 * 1. new bandwidth vote - "ab or ib vote" is higher
