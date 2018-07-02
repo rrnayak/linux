@@ -8,12 +8,18 @@ Required properties:
   with the chip-id.
 - reg: Physical base address and length of the controller's registers.
 - interrupts: The interrupt signal from the gpu.
-- clocks: device clocks
+
+Optional properties.
+- clocks: device clocks. Required for a3xx, a4xx and a5xx targets. a6xx and
+  newer with a GMU attached do not have direct clock control from the CPU and
+  do not need to provide clock properties.
   See ../clocks/clock-bindings.txt for details.
-- clock-names: the following clocks are required:
+- clock-names: the following clocks can be provided:
   * "core"
   * "iface"
   * "mem_iface"
+- qcom,gmu: For a6xx and newer targets a phandle to the GMU device that will
+  control the power for the GPU
 
 Example:
 
@@ -34,5 +40,13 @@ Example:
 		    <&mmcc GFX3D_CLK>,
 		    <&mmcc GFX3D_AHB_CLK>,
 		    <&mmcc MMSS_IMEM_AHB_CLK>;
+	};
+
+	gpu: qcom,kgsl-3d0@5000000 {
+		compatible = "qcom,adreno-630.2", "qcom,adreno";
+		reg = <0x5000000 0x40000>;
+		reg-names = "kgsl_3d0_reg_memory";
+		interrupts = <0 300 0>;
+		interrupt-names = "kgsl_3d0_irq";
 	};
 };
