@@ -8,6 +8,9 @@ settings.
 Required Properties:
 -compatible: "qcom,pshold"
 -reg: Specifies the physical address of the ps-hold register
+Optional Properties:
+-qcom,dload-mode: phandle to the TCSR hardware block and offset of the
+		 download mode control register
 
 Example:
 
