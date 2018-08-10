@@ -36,47 +36,44 @@ struct intbuf {
 	unsigned long attrs;
 };
 
+u32 v4l2_venus_fmt(u32 pixfmt)
+{
+	switch (pixfmt) {
+	case V4L2_PIX_FMT_H264:
+	case V4L2_PIX_FMT_H264_NO_SC:
+		return HFI_VIDEO_CODEC_H264;
+	case V4L2_PIX_FMT_H263:
+		return HFI_VIDEO_CODEC_H263;
+	case V4L2_PIX_FMT_MPEG1:
+		return HFI_VIDEO_CODEC_MPEG1;
+	case V4L2_PIX_FMT_MPEG2:
+		return HFI_VIDEO_CODEC_MPEG2;
+	case V4L2_PIX_FMT_MPEG4:
+		return HFI_VIDEO_CODEC_MPEG4;
+	case V4L2_PIX_FMT_VC1_ANNEX_G:
+	case V4L2_PIX_FMT_VC1_ANNEX_L:
+		return HFI_VIDEO_CODEC_VC1;
+	case V4L2_PIX_FMT_VP8:
+		return HFI_VIDEO_CODEC_VP8;
+	case V4L2_PIX_FMT_VP9:
+		return HFI_VIDEO_CODEC_VP9;
+	case V4L2_PIX_FMT_XVID:
+		return HFI_VIDEO_CODEC_DIVX;
+	case V4L2_PIX_FMT_HEVC:
+		return HFI_VIDEO_CODEC_HEVC;
+	default:
+		return 0;
+	}
+}
+EXPORT_SYMBOL_GPL(v4l2_venus_fmt);
+
 bool venus_helper_check_codec(struct venus_inst *inst, u32 v4l2_pixfmt)
 {
 	struct venus_core *core = inst->core;
 	u32 session_type = inst->session_type;
 	u32 codec;
 
-	switch (v4l2_pixfmt) {
-	case V4L2_PIX_FMT_H264:
-		codec = HFI_VIDEO_CODEC_H264;
-		break;
-	case V4L2_PIX_FMT_H263:
-		codec = HFI_VIDEO_CODEC_H263;
-		break;
-	case V4L2_PIX_FMT_MPEG1:
-		codec = HFI_VIDEO_CODEC_MPEG1;
-		break;
-	case V4L2_PIX_FMT_MPEG2:
-		codec = HFI_VIDEO_CODEC_MPEG2;
-		break;
-	case V4L2_PIX_FMT_MPEG4:
-		codec = HFI_VIDEO_CODEC_MPEG4;
-		break;
-	case V4L2_PIX_FMT_VC1_ANNEX_G:
-	case V4L2_PIX_FMT_VC1_ANNEX_L:
-		codec = HFI_VIDEO_CODEC_VC1;
-		break;
-	case V4L2_PIX_FMT_VP8:
-		codec = HFI_VIDEO_CODEC_VP8;
-		break;
-	case V4L2_PIX_FMT_VP9:
-		codec = HFI_VIDEO_CODEC_VP9;
-		break;
-	case V4L2_PIX_FMT_XVID:
-		codec = HFI_VIDEO_CODEC_DIVX;
-		break;
-	case V4L2_PIX_FMT_HEVC:
-		codec = HFI_VIDEO_CODEC_HEVC;
-		break;
-	default:
-		return false;
-	}
+	codec = v4l2_venus_fmt(v4l2_pixfmt);
 
 	if (session_type == VIDC_SESSION_TYPE_ENC && core->enc_codecs & codec)
 		return true;
@@ -180,6 +177,8 @@ int venus_helper_alloc_dpb_bufs(struct venus_inst *inst)
 		list_add_tail(&buf->list, &inst->dpbbufs);
 	}
 
+	venus_helper_queue_dpb_bufs(inst);
+
 	return 0;
 
 fail:
@@ -254,6 +253,11 @@ static int intbufs_unset_buffers(struct venus_inst *inst)
 	int ret = 0;
 
 	list_for_each_entry_safe(buf, n, &inst->internalbufs, list) {
+
+		if (inst->reconfig &&
+			((buf->type == HFI_BUFFER_INTERNAL_PERSIST) ||
+			(buf->type == HFI_BUFFER_INTERNAL_PERSIST_1)))
+			continue;
 		bd.buffer_size = buf->size;
 		bd.buffer_type = buf->type;
 		bd.num_buffers = 1;
@@ -289,20 +293,26 @@ static const unsigned int intbuf_types_4xx[] = {
 
 static int intbufs_alloc(struct venus_inst *inst)
 {
-	const unsigned int *intbuf;
-	size_t arr_sz, i;
+	size_t arr_sz;
+	size_t i;
 	int ret;
+	unsigned int buf_type;
 
-	if (IS_V4(inst->core)) {
+	if (IS_V4(inst->core))
 		arr_sz = ARRAY_SIZE(intbuf_types_4xx);
-		intbuf = intbuf_types_4xx;
-	} else {
+	else
 		arr_sz = ARRAY_SIZE(intbuf_types_1xx);
-		intbuf = intbuf_types_1xx;
-	}
 
 	for (i = 0; i < arr_sz; i++) {
-		ret = intbufs_set_buffer(inst, intbuf[i]);
+		buf_type = IS_V4(inst->core) ? intbuf_types_4xx[i] :
+						intbuf_types_1xx[i];
+
+		if (inst->reconfig &&
+			(buf_type == HFI_BUFFER_INTERNAL_PERSIST ||
+			buf_type == HFI_BUFFER_INTERNAL_PERSIST_1))
+			continue;
+
+		ret = intbufs_set_buffer(inst, buf_type);
 		if (ret)
 			goto error;
 	}
@@ -975,7 +985,10 @@ void venus_helper_vb2_buf_queue(struct vb2_buffer *vb)
 
 	v4l2_m2m_buf_queue(m2m_ctx, vbuf);
 
-	if (!(inst->streamon_out & inst->streamon_cap))
+	if (!((inst->streamon_out &&
+		vb->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)
+	   || (inst->streamon_cap &&
+	   vb->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)))
 		goto unlock;
 
 	ret = is_buf_refed(inst, vbuf);
@@ -992,14 +1005,19 @@ unlock:
 EXPORT_SYMBOL_GPL(venus_helper_vb2_buf_queue);
 
 void venus_helper_buffers_done(struct venus_inst *inst,
-			       enum vb2_buffer_state state)
+			       int type, enum vb2_buffer_state state)
 {
 	struct vb2_v4l2_buffer *buf;
 
-	while ((buf = v4l2_m2m_src_buf_remove(inst->m2m_ctx)))
-		v4l2_m2m_buf_done(buf, state);
-	while ((buf = v4l2_m2m_dst_buf_remove(inst->m2m_ctx)))
-		v4l2_m2m_buf_done(buf, state);
+	if (type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
+		while ((buf = v4l2_m2m_src_buf_remove(inst->m2m_ctx)))
+			v4l2_m2m_buf_done(buf, state);
+	}
+
+	if (type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
+		while ((buf = v4l2_m2m_dst_buf_remove(inst->m2m_ctx)))
+			v4l2_m2m_buf_done(buf, state);
+	}
 }
 EXPORT_SYMBOL_GPL(venus_helper_buffers_done);
 
@@ -1011,17 +1029,28 @@ void venus_helper_vb2_stop_streaming(struct vb2_queue *q)
 
 	mutex_lock(&inst->lock);
 
-	if (inst->streamon_out & inst->streamon_cap) {
+	if (!inst->streamon_cap && !inst->streamon_out)
+		goto unlock;
+
+	if (inst->streamon_cap &&
+			(q->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
 		ret = hfi_session_stop(inst);
-		ret |= hfi_session_unload_res(inst);
-		ret |= session_unregister_bufs(inst);
+		inst->streamon_cap = 0;
+	}
+
+	if (inst->streamon_out && !inst->streamon_cap) {
+		inst->streamon_out = 0;
+		hfi_session_stop(inst);
+		ret = hfi_session_unload_res(inst);
+		if (inst->hfi_codec == HFI_VIDEO_CODEC_H264)
+			ret |= session_unregister_bufs(inst);
 		ret |= intbufs_free(inst);
 		ret |= hfi_session_deinit(inst);
 
 		if (inst->session_error || core->sys_error)
 			ret = -EIO;
 
-		if (ret)
+		if (IS_V3(core) && ret)
 			hfi_session_abort(inst);
 
 		venus_helper_free_dpb_bufs(inst);
@@ -1029,27 +1058,58 @@ void venus_helper_vb2_stop_streaming(struct vb2_queue *q)
 		load_scale_clocks(core);
 		INIT_LIST_HEAD(&inst->registeredbufs);
 	}
-
-	venus_helper_buffers_done(inst, VB2_BUF_STATE_ERROR);
-
-	if (q->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)
-		inst->streamon_out = 0;
-	else
-		inst->streamon_cap = 0;
-
+unlock:
+	venus_helper_buffers_done(inst, q->type, VB2_BUF_STATE_ERROR);
 	mutex_unlock(&inst->lock);
 }
 EXPORT_SYMBOL_GPL(venus_helper_vb2_stop_streaming);
 
+int venus_helper_alloc_intbufs(struct venus_inst *inst)
+{
+	int ret = 0;
+
+	ret = intbufs_free(inst);
+	ret |= intbufs_alloc(inst);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(venus_helper_alloc_intbufs);
+
+int venus_helper_queue_initial_bufs(struct venus_inst *inst, unsigned int type)
+{
+	struct v4l2_m2m_ctx *m2m_ctx = inst->m2m_ctx;
+	struct v4l2_m2m_buffer *buf, *n;
+	int ret;
+
+	if (type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)	{
+		v4l2_m2m_for_each_dst_buf_safe(m2m_ctx, buf, n)	{
+			ret = session_process_buf(inst, &buf->vb);
+			if (ret)
+				return_buf_error(inst, &buf->vb);
+		}
+	}
+	if (type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
+		v4l2_m2m_for_each_src_buf_safe(m2m_ctx, buf, n) {
+			ret = session_process_buf(inst, &buf->vb);
+			if (ret)
+				return_buf_error(inst, &buf->vb);
+		}
+	}
+	return 0;
+}
+EXPORT_SYMBOL(venus_helper_queue_initial_bufs);
+
 int venus_helper_vb2_start_streaming(struct venus_inst *inst)
 {
 	struct venus_core *core = inst->core;
+	struct device *dev = core->dev;
 	int ret;
 
 	ret = intbufs_alloc(inst);
-	if (ret)
+	if (ret) {
+		dev_err(dev, "internal buffer allocation failed");
 		return ret;
-
+	}
 	ret = session_register_bufs(inst);
 	if (ret)
 		goto err_bufs_free;
@@ -1064,14 +1124,8 @@ int venus_helper_vb2_start_streaming(struct venus_inst *inst)
 	if (ret)
 		goto err_unload_res;
 
-	ret = venus_helper_queue_dpb_bufs(inst);
-	if (ret)
-		goto err_session_stop;
-
 	return 0;
 
-err_session_stop:
-	hfi_session_stop(inst);
 err_unload_res:
 	hfi_session_unload_res(inst);
 err_unreg_bufs:
@@ -1084,10 +1138,14 @@ EXPORT_SYMBOL_GPL(venus_helper_vb2_start_streaming);
 
 void venus_helper_m2m_device_run(void *priv)
 {
+#if 0
 	struct venus_inst *inst = priv;
 	struct v4l2_m2m_ctx *m2m_ctx = inst->m2m_ctx;
 	struct v4l2_m2m_buffer *buf, *n;
 	int ret;
+
+	if (inst->session_type != VIDC_SESSION_TYPE_ENC)
+		return;
 
 	mutex_lock(&inst->lock);
 
@@ -1104,6 +1162,8 @@ void venus_helper_m2m_device_run(void *priv)
 	}
 
 	mutex_unlock(&inst->lock);
+#endif
+	return;
 }
 EXPORT_SYMBOL_GPL(venus_helper_m2m_device_run);
 

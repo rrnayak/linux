@@ -24,7 +24,7 @@
 #include "hfi_cmds.h"
 #include "hfi_venus.h"
 
-#define TIMEOUT		msecs_to_jiffies(1000)
+#define TIMEOUT		msecs_to_jiffies(10000)
 
 static u32 to_codec_type(u32 pixfmt)
 {
@@ -207,6 +207,9 @@ int hfi_session_init(struct venus_inst *inst, u32 pixfmt)
 	const struct hfi_ops *ops = core->ops;
 	int ret;
 
+	if (inst->state >= INST_INIT && inst->state < INST_STOP)
+		return 0;
+
 	inst->hfi_codec = to_codec_type(pixfmt);
 	reinit_completion(&inst->done);
 
@@ -384,14 +387,14 @@ int hfi_session_unload_res(struct venus_inst *inst)
 	return 0;
 }
 
-int hfi_session_flush(struct venus_inst *inst)
+int hfi_session_flush(struct venus_inst *inst, u32 mode)
 {
 	const struct hfi_ops *ops = inst->core->ops;
 	int ret;
 
 	reinit_completion(&inst->done);
 
-	ret = ops->session_flush(inst, HFI_FLUSH_ALL);
+	ret = ops->session_flush(inst, mode);
 	if (ret)
 		return ret;
 
