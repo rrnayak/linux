@@ -580,26 +580,26 @@ erase_err:
 	return ret;
 }
 
-/* Write status register and ensure bits in mask match written values */
-static int write_sr_and_check(struct spi_nor *nor, u8 status_new, u8 mask)
-{
-	int ret;
+/* /1* Write status register and ensure bits in mask match written values *1/ */
+/* static int write_sr_and_check(struct spi_nor *nor, u8 status_new, u8 mask) */
+/* { */
+/* 	int ret; */
 
-	write_enable(nor);
-	ret = write_sr(nor, status_new);
-	if (ret)
-		return ret;
+/* 	write_enable(nor); */
+/* 	ret = write_sr(nor, status_new); */
+/* 	if (ret) */
+/* 		return ret; */
 
-	ret = spi_nor_wait_till_ready(nor);
-	if (ret)
-		return ret;
+/* 	ret = spi_nor_wait_till_ready(nor); */
+/* 	if (ret) */
+/* 		return ret; */
 
-	ret = read_sr(nor);
-	if (ret < 0)
-		return ret;
+/* 	ret = read_sr(nor); */
+/* 	if (ret < 0) */
+/* 		return ret; */
 
-	return ((ret & mask) != (status_new & mask)) ? -EIO : 0;
-}
+/* 	return ((ret & mask) != (status_new & mask)) ? -EIO : 0; */
+/* } */
 
 static void stm_get_locked_range(struct spi_nor *nor, u8 sr, loff_t *ofs,
 				 uint64_t *len)

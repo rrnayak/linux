@@ -206,7 +206,7 @@ syscall_list() {
     grep '^[0-9]' "$1" | sort -n |
 	while read nr abi name entry ; do
 		echo "#if !defined(__NR_${name}) && !defined(__IGNORE_${name})"
-		echo "#warning syscall ${name} not implemented"
+		# echo "#warning syscall ${name} not implemented"
 		echo "#endif"
 	done
 }
