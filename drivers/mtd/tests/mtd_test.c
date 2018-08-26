@@ -14,6 +14,7 @@ int mtdtest_erase_eraseblock(struct mtd_info *mtd, unsigned int ebnum)
 	loff_t addr = (loff_t)ebnum * mtd->erasesize;
 
 	memset(&ei, 0, sizeof(struct erase_info));
+	ei.mtd  = mtd;
 	ei.addr = addr;
 	ei.len  = mtd->erasesize;
 
