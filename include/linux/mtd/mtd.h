@@ -30,6 +30,12 @@
 
 #include <asm/div64.h>
 
+#define MTD_ERASE_PENDING	0x01
+#define MTD_ERASING		0x02
+#define MTD_ERASE_SUSPEND	0x04
+#define MTD_ERASE_DONE		0x08
+#define MTD_ERASE_FAILED	0x10
+
 #define MTD_FAIL_ADDR_UNKNOWN -1LL
 
 struct mtd_info;
@@ -43,6 +49,7 @@ struct erase_info {
 	uint64_t addr;
 	uint64_t len;
 	uint64_t fail_addr;
+	u_char state;
 };
 
 struct mtd_erase_region_info {
@@ -581,6 +588,8 @@ struct mtd_notifier {
 extern void register_mtd_user (struct mtd_notifier *new);
 extern int unregister_mtd_user (struct mtd_notifier *old);
 void *mtd_kmalloc_up_to(const struct mtd_info *mtd, size_t *size);
+
+void mtd_erase_callback(struct erase_info *instr);
 
 static inline int mtd_is_bitflip(int err) {
 	return err == -EUCLEAN;

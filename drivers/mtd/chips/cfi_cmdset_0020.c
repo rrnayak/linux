@@ -966,6 +966,9 @@ static int cfi_staa_erase_varsize(struct mtd_info *mtd,
 		}
 	}
 
+	instr->state = MTD_ERASE_DONE;
+	mtd_erase_callback(instr);
+
 	return 0;
 }
 
