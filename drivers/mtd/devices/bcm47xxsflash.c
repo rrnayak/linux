@@ -95,6 +95,9 @@ static int bcm47xxsflash_erase(struct mtd_info *mtd, struct erase_info *erase)
 	else
 		erase->state = MTD_ERASE_DONE;
 
+	if (erase->callback)
+		erase->callback(erase);
+
 	return err;
 }
 
