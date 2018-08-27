@@ -6701,7 +6701,7 @@ void ufshcd_parse_dev_ref_clk_freq(struct ufs_hba *hba)
 	hba->dev_ref_clk_freq = bREF_CLK_FREQ_INVAL;
 
 	refclk = of_clk_get_by_name(np, "ref_clk");
-	if (!refclk)
+	if (PTR_ERR(refclk))
 		return;
 
 	freq = clk_get_rate(refclk);
