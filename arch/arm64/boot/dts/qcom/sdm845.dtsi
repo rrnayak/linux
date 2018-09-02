@@ -870,7 +870,7 @@
 		ufshc1: ufshc@1d84000 {
 			compatible = "qcom,ufshc";
 			reg = <0x1d84000 0x2500>;
-			interrupts = <0 265 0>;
+			interrupts = <0 265 IRQ_TYPE_LEVEL_HIGH>;
 			phys = <&ufsphy1_l0>;
 			phy-names = "ufsphy";
 
@@ -950,9 +950,9 @@
 			reg-names = "ipa-base",
 				    "gsi-base";
 
-			interrupts-extended = <&intc 0 311 0>,
-					      <&intc 0 432 0>,
-					      <&ipa_smp2p_in 0 0>;
+			interrupts-extended = <&intc 0 311 IRQ_TYPE_LEVEL_HIGH>,
+					      <&intc 0 432 IRQ_TYPE_LEVEL_HIGH>,
+					      <&ipa_smp2p_in 0 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "ipa-irq",
 					  "gsi-irq",
 					  "ipa-clock-query";
@@ -1466,10 +1466,10 @@
 			reg-names = "qdsp6", "rmb";
 
 			interrupts-extended = <&intc 0 266 1>,
-					      <&modem_smp2p_in 0 0>,
-					      <&modem_smp2p_in 1 0>,
-					      <&modem_smp2p_in 2 0>,
-					      <&modem_smp2p_in 3 0>;
+					      <&modem_smp2p_in 0 IRQ_TYPE_LEVEL_HIGH>,
+					      <&modem_smp2p_in 1 IRQ_TYPE_LEVEL_HIGH>,
+					      <&modem_smp2p_in 2 IRQ_TYPE_LEVEL_HIGH>,
+					      <&modem_smp2p_in 3 IRQ_TYPE_LEVEL_HIGH>;
 
 			interrupt-names = "wdog", "fatal", "ready",
 					  "handover", "stop-ack";
@@ -1552,7 +1552,7 @@
 			reg = <0x8804000 0x1000>;
 			reg-names = "hc_mem";
 
-			interrupts = <0 204 0>, <0 222 0>;
+			interrupts = <0 204 IRQ_TYPE_LEVEL_HIGH>, <0 222 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "hc_irq", "pwr_irq";
 
 			qcom,bus-width = <4>;
