@@ -65,12 +65,12 @@ uint32_t dpu_populate_formats(
  *
  * Return: size of the buffer
  */
-int dpu_format_get_plane_sizes(
-		const struct dpu_format *fmt,
-		const uint32_t w,
-		const uint32_t h,
-		struct dpu_hw_fmt_layout *layout,
-		const uint32_t *pitches);
+/* int dpu_format_get_plane_sizes( */
+/* 		const struct dpu_format *fmt, */
+/* 		const uint32_t w, */
+/* 		const uint32_t h, */
+/* 		struct dpu_hw_fmt_layout *layout, */
+/* 		const uint32_t *pitches); */
 
 /**
  * dpu_format_get_block_size - get block size of given format when
