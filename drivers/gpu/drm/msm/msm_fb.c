@@ -48,6 +48,7 @@ static const struct drm_framebuffer_funcs msm_framebuffer_funcs = {
 #ifdef CONFIG_DEBUG_FS
 void msm_framebuffer_describe(struct drm_framebuffer *fb, struct seq_file *m)
 {
+	struct msm_framebuffer *msm_fb = to_msm_framebuffer(fb);
 	int i, n = fb->format->num_planes;
 
 	seq_printf(m, "fb: %dx%d@%4.4s (%2d, ID:%d)\n",
@@ -57,7 +58,7 @@ void msm_framebuffer_describe(struct drm_framebuffer *fb, struct seq_file *m)
 	for (i = 0; i < n; i++) {
 		seq_printf(m, "   %d: offset=%d pitch=%d, obj: ",
 				i, fb->offsets[i], fb->pitches[i]);
-		msm_gem_describe(fb->obj[i], m);
+		msm_gem_describe(msm_fb->planes[i], m);
 	}
 }
 #endif
@@ -130,7 +131,7 @@ int msm_framebuffer_prepare(struct drm_framebuffer *fb,
 	uint64_t iova;
 
 	for (i = 0; i < n; i++) {
-		ret = msm_gem_get_iova(fb->obj[i], aspace, &iova);
+		ret = msm_gem_get_iova(msm_fb->planes[i], aspace, &iova);
 		DBG("FB[%u]: iova[%d]: %08llx (%d)", fb->base.id, i, iova, ret);
 		if (ret)
 			return ret;
@@ -152,15 +153,16 @@ void msm_framebuffer_cleanup(struct drm_framebuffer *fb,
 		msm_framebuffer_kunmap(fb);
 
 	for (i = 0; i < n; i++)
-		msm_gem_put_iova(fb->obj[i], aspace);
+		msm_gem_put_iova(msm_fb->planes[i], aspace);
 }
 
 uint32_t msm_framebuffer_iova(struct drm_framebuffer *fb,
 		struct msm_gem_address_space *aspace, int plane)
 {
-	if (!fb->obj[plane])
+	struct msm_framebuffer *msm_fb = to_msm_framebuffer(fb);
+	if (!msm_fb->planes[plane])
 		return 0;
-	return msm_gem_iova(fb->obj[plane], aspace) + fb->offsets[plane];
+	return msm_gem_iova(msm_fb->planes[plane], aspace) + fb->offsets[plane];
 }
 
 uint32_t msm_framebuffer_phys(struct drm_framebuffer *fb,
@@ -181,7 +183,8 @@ uint32_t msm_framebuffer_phys(struct drm_framebuffer *fb,
 
 struct drm_gem_object *msm_framebuffer_bo(struct drm_framebuffer *fb, int plane)
 {
-	return drm_gem_fb_get_obj(fb, plane);
+	struct msm_framebuffer *msm_fb = to_msm_framebuffer(fb);
+	return msm_fb->planes[plane];
 }
 
 const struct msm_format *msm_framebuffer_format(struct drm_framebuffer *fb)
