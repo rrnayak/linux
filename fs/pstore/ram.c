@@ -76,7 +76,7 @@ MODULE_PARM_DESC(ramoops_ecc,
 struct ramoops_context {
 	struct persistent_ram_zone **dprzs;	/* Oops dump zones */
 	struct persistent_ram_zone *cprz;	/* Console zone */
-	struct persistent_ram_zone *eprz;       /* Event zone */
+	struct persistent_ram_zone **eprzs;     /* Event zones */
 	struct persistent_ram_zone **fprzs;	/* Ftrace zones */
 	struct persistent_ram_zone *mprz;	/* PMSG zone */
 	phys_addr_t phys_addr;
@@ -95,6 +95,7 @@ struct ramoops_context {
 	/* _read_cnt need clear on ramoops_pstore_open */
 	unsigned int dump_read_cnt;
 	unsigned int console_read_cnt;
+	unsigned int max_event_cnt;
 	unsigned int event_read_cnt;
 	unsigned int max_ftrace_cnt;
 	unsigned int ftrace_read_cnt;
@@ -265,11 +266,17 @@ static ssize_t ramoops_pstore_read(struct pstore_record *record)
 	if (!prz_ok(prz) && !cxt->console_read_cnt++)
 		prz = ramoops_get_next_prz(&cxt->cprz, 0 /* single */, record);
 
-	if (!prz_ok(prz) && !cxt->event_read_cnt++)
-		prz = ramoops_get_next_prz(&cxt->eprz, 0 /* single */, record);
-
 	if (!prz_ok(prz) && !cxt->pmsg_read_cnt++)
 		prz = ramoops_get_next_prz(&cxt->mprz, 0 /* single */, record);
+
+	if (!prz_ok(prz)) {
+		while (cxt->event_read_cnt < cxt->max_event_cnt && !prz) {
+			prz = ramoops_get_next_prz(cxt->eprzs,
+					cxt->event_read_cnt++, record);
+			if (!prz_ok(prz))
+				continue;
+		}
+	}
 
 	/* ftrace is last since it may want to dynamically allocate memory. */
 	if (!prz_ok(prz)) {
@@ -369,9 +376,17 @@ static int notrace ramoops_pstore_write(struct pstore_record *record)
 		persistent_ram_write(cxt->cprz, record->buf, record->size);
 		return 0;
 	} else if (record->type == PSTORE_TYPE_EVENT) {
-		if (!cxt->eprz)
+		int zonenum;
+
+		if (!cxt->eprzs)
 			return -ENOMEM;
-		persistent_ram_write(cxt->eprz, record->buf, record->size);
+		/*
+		 * Choose zone by if we're using per-cpu buffers.
+		 */
+		zonenum = smp_processor_id();
+
+		persistent_ram_write(cxt->eprzs[zonenum], record->buf,
+				     record->size);
 		return 0;
 	} else if (record->type == PSTORE_TYPE_FTRACE) {
 		int zonenum;
@@ -467,7 +482,9 @@ static int ramoops_pstore_erase(struct pstore_record *record)
 		prz = cxt->cprz;
 		break;
 	case PSTORE_TYPE_EVENT:
-		prz = cxt->eprz;
+		if (record->id >= cxt->max_event_cnt)
+			return -EINVAL;
+		prz = cxt->eprzs[record->id];
 		break;
 	case PSTORE_TYPE_FTRACE:
 		if (record->id >= cxt->max_ftrace_cnt)
@@ -815,8 +832,12 @@ static int ramoops_probe(struct platform_device *pdev)
 	if (err)
 		goto fail_init_cprz;
 
-	err = ramoops_init_prz("event", dev, cxt, &cxt->eprz, &paddr,
-			       cxt->event_size, 0);
+	cxt->max_event_cnt = nr_cpu_ids;
+
+	err = ramoops_init_przs("event", dev, cxt, &cxt->eprzs, &paddr,
+				cxt->event_size, -1,
+				&cxt->max_event_cnt, LINUX_VERSION_CODE,
+				PRZ_FLAG_NO_LOCK);
 	if (err)
 		goto fail_init_eprz;
 
@@ -899,7 +920,6 @@ fail_buf:
 	kfree(cxt->pstore.buf);
 fail_clear:
 	cxt->pstore.bufsize = 0;
-	persistent_ram_free(cxt->eprz);
 fail_init_eprz:
 	persistent_ram_free(cxt->mprz);
 fail_init_mprz:
@@ -920,7 +940,6 @@ static int ramoops_remove(struct platform_device *pdev)
 	kfree(cxt->pstore.buf);
 	cxt->pstore.bufsize = 0;
 
-	persistent_ram_free(cxt->eprz);
 	persistent_ram_free(cxt->mprz);
 	persistent_ram_free(cxt->cprz);
 	ramoops_free_przs(cxt);
