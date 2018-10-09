@@ -798,7 +798,27 @@ config GCOV_PROFILE_FTRACE
 	  Note that on a kernel compiled with this config, ftrace will
 	  run significantly slower.
 
+config TRACING_EVENTS_IO
+	bool "Trace IO read/write events"
+	help
+	  Enable tracing events for IO read/write operations.
+	  This is useful for debugging random hangs or resets
+	  caused due to unclocked access or some buggy driver.
+
+	  Output of this trace event can be overwhelming and hence
+	  dynamic filtering option based on dynamic debug library
+	  is provided to narrow down the issues.
+
+	  Eg: Trace all register read/write of mmc subsystem with
+	  below command line:
+
+	    dyndbg="file drivers/mmc/* +p" trace_event=io
+
+	  See Documentation/admin-guide/dynamic-debug-howto.rst for
+	  more info on using dynamic debug.
+
+	  If unsure, say N.
+
 endif # FTRACE
 
 endif # TRACING_SUPPORT
-

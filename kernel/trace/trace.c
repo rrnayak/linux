@@ -74,6 +74,11 @@ struct trace_iterator *tracepoint_print_iter;
 int tracepoint_printk;
 static DEFINE_STATIC_KEY_FALSE(tracepoint_printk_key);
 
+/* Pipe tracepoints to pstore */
+struct trace_iterator *tracepoint_pstore_iter;
+int tracepoint_pstore;
+static DEFINE_STATIC_KEY_FALSE(tracepoint_pstore_key);
+
 /* For tracers that don't implement custom flags */
 static struct tracer_opt dummy_tracer_opt[] = {
 	{ }
@@ -240,6 +245,14 @@ static int __init set_tracepoint_printk(char *str)
 	return 1;
 }
 __setup("tp_printk", set_tracepoint_printk);
+
+static int __init set_tracepoint_pstore(char *str)
+{
+	if ((strcmp(str, "=0") != 0 && strcmp(str, "=off") != 0))
+		tracepoint_pstore = 1;
+	return 1;
+}
+__setup("tp_pstore", set_tracepoint_pstore);
 
 unsigned long long ns2usecs(u64 nsec)
 {
@@ -2578,10 +2591,44 @@ int tracepoint_printk_sysctl(struct ctl_table *table, int write,
 	return ret;
 }
 
+static DEFINE_MUTEX(tracepoint_pstore_mutex);
+
+int tracepoint_pstore_sysctl(struct ctl_table *table, int write,
+			     void __user *buffer, size_t *lenp,
+			     loff_t *ppos)
+{
+	int save_tracepoint_pstore;
+	int ret;
+
+	mutex_lock(&tracepoint_pstore_mutex);
+	save_tracepoint_pstore = tracepoint_pstore;
+
+	ret = proc_dointvec(table, write, buffer, lenp, ppos);
+
+	if (!tracepoint_pstore_iter)
+		tracepoint_pstore = 0;
+
+	if (save_tracepoint_pstore == tracepoint_pstore)
+		goto out;
+
+	if (tracepoint_pstore)
+		static_key_enable(&tracepoint_pstore_key.key);
+	else
+		static_key_disable(&tracepoint_pstore_key.key);
+
+ out:
+	mutex_unlock(&tracepoint_pstore_mutex);
+
+	return ret;
+}
+
 void trace_event_buffer_commit(struct trace_event_buffer *fbuffer)
 {
 	if (static_key_false(&tracepoint_printk_key.key))
 		output_printk(fbuffer);
+
+	if (static_key_false(&tracepoint_pstore_key.key))
+		pstore_event_call(fbuffer);
 
 	event_trigger_unlock_commit(fbuffer->trace_file, fbuffer->buffer,
 				    fbuffer->event, fbuffer->entry,
@@ -9210,6 +9257,16 @@ void __init early_trace_init(void)
 		else
 			static_key_enable(&tracepoint_printk_key.key);
 	}
+
+	if (tracepoint_pstore) {
+		tracepoint_pstore_iter =
+			kmalloc(sizeof(*tracepoint_pstore_iter), GFP_KERNEL);
+		if (WARN_ON(!tracepoint_pstore_iter))
+			tracepoint_pstore = 0;
+		else
+			static_key_enable(&tracepoint_pstore_key.key);
+	}
+
 	tracer_alloc_buffers();
 }
 

@@ -16,8 +16,11 @@
 #include <linux/debugfs.h>
 #include <linux/err.h>
 #include <linux/cache.h>
+#include <linux/trace_events.h>
 #include <asm/barrier.h>
 #include "internal.h"
+
+static DEFINE_SPINLOCK(pstore_lock);
 
 /* This doesn't need to be atomic: speed is chosen over correctness here. */
 static u64 pstore_ftrace_stamp;
@@ -53,6 +56,55 @@ static void notrace pstore_ftrace_call(unsigned long ip,
 static struct ftrace_ops pstore_ftrace_ops __read_mostly = {
 	.func	= pstore_ftrace_call,
 };
+
+void notrace pstore_event_call(struct trace_event_buffer *fbuffer)
+{
+	struct trace_iterator *iter;
+	struct trace_seq *s;
+	struct trace_event_call *event_call;
+	struct pstore_record record;
+	struct trace_event *event;
+	struct seq_buf *seq;
+	unsigned long flags;
+
+	if (!psinfo)
+		return;
+
+	if (unlikely(oops_in_progress))
+		return;
+
+	iter = tracepoint_pstore_iter;
+	if (!iter)
+		return;
+
+	pstore_record_init(&record, psinfo);
+	record.type = PSTORE_TYPE_EVENT;
+
+	event_call = fbuffer->trace_file->event_call;
+	if (!event_call || !event_call->event.funcs ||
+	    !event_call->event.funcs->trace)
+		return;
+
+	event = &fbuffer->trace_file->event_call->event;
+
+	spin_lock_irqsave(&pstore_lock, flags);
+
+	trace_seq_init(&iter->seq);
+	iter->ent = fbuffer->entry;
+	event_call->event.funcs->trace(iter, 0, event);
+
+	if (seq->size > psinfo->bufsize)
+		seq->size = psinfo->bufsize;
+
+	s = &iter->seq;
+	seq = &s->seq;
+
+	record.buf = (char *)(seq->buffer);
+	record.size = seq->len;
+	psinfo->write(&record);
+
+	spin_unlock_irqrestore(&pstore_lock, flags);
+}
 
 static DEFINE_MUTEX(pstore_ftrace_lock);
 static bool pstore_ftrace_enabled;

@@ -685,6 +685,13 @@ static struct ctl_table kern_table[] = {
 		.mode		= 0644,
 		.proc_handler	= tracepoint_printk_sysctl,
 	},
+	{
+		.procname	= "tracepoint_pstore",
+		.data		= &tracepoint_pstore,
+		.maxlen		= sizeof(tracepoint_pstore),
+		.mode		= 0644,
+		.proc_handler	= tracepoint_pstore_sysctl,
+	},
 #endif
 #ifdef CONFIG_KEXEC_CORE
 	{

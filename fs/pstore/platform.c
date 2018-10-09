@@ -58,6 +58,7 @@ static const char * const pstore_type_names[] = {
 	"powerpc-common",
 	"pmsg",
 	"powerpc-opal",
+	"event",
 };
 
 static int pstore_new_entry;

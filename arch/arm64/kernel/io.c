@@ -8,6 +8,10 @@
 #include <linux/export.h>
 #include <linux/types.h>
 #include <linux/io.h>
+#include <linux/sched/clock.h>
+
+#define CREATE_TRACE_POINTS
+#include <asm-generic/io-trace.h>
 
 /*
  * Copy data from IO memory space to "real" memory space.
@@ -15,21 +19,21 @@
 void __memcpy_fromio(void *to, const volatile void __iomem *from, size_t count)
 {
 	while (count && !IS_ALIGNED((unsigned long)from, 8)) {
-		*(u8 *)to = __raw_readb(from);
+		*(u8 *)to = arch_raw_readb(from);
 		from++;
 		to++;
 		count--;
 	}
 
 	while (count >= 8) {
-		*(u64 *)to = __raw_readq(from);
+		*(u64 *)to = arch_raw_readq(from);
 		from += 8;
 		to += 8;
 		count -= 8;
 	}
 
 	while (count) {
-		*(u8 *)to = __raw_readb(from);
+		*(u8 *)to = arch_raw_readb(from);
 		from++;
 		to++;
 		count--;
@@ -43,21 +47,21 @@ EXPORT_SYMBOL(__memcpy_fromio);
 void __memcpy_toio(volatile void __iomem *to, const void *from, size_t count)
 {
 	while (count && !IS_ALIGNED((unsigned long)to, 8)) {
-		__raw_writeb(*(u8 *)from, to);
+		arch_raw_writeb(*(u8 *)from, to);
 		from++;
 		to++;
 		count--;
 	}
 
 	while (count >= 8) {
-		__raw_writeq(*(u64 *)from, to);
+		arch_raw_writeq(*(u64 *)from, to);
 		from += 8;
 		to += 8;
 		count -= 8;
 	}
 
 	while (count) {
-		__raw_writeb(*(u8 *)from, to);
+		arch_raw_writeb(*(u8 *)from, to);
 		from++;
 		to++;
 		count--;
@@ -77,21 +81,39 @@ void __memset_io(volatile void __iomem *dst, int c, size_t count)
 	qc |= qc << 32;
 
 	while (count && !IS_ALIGNED((unsigned long)dst, 8)) {
-		__raw_writeb(c, dst);
+		arch_raw_writeb(c, dst);
 		dst++;
 		count--;
 	}
 
 	while (count >= 8) {
-		__raw_writeq(qc, dst);
+		arch_raw_writeq(qc, dst);
 		dst += 8;
 		count -= 8;
 	}
 
 	while (count) {
-		__raw_writeb(c, dst);
+		arch_raw_writeb(c, dst);
 		dst++;
 		count--;
 	}
 }
 EXPORT_SYMBOL(__memset_io);
+
+#if defined(CONFIG_TRACING_EVENTS_IO)
+void do_trace_io_write(const char *type, void *addr)
+{
+	trace_io_write(type, raw_smp_processor_id(), sched_clock(), addr,
+		       _RET_IP_);
+}
+EXPORT_SYMBOL(do_trace_io_write);
+EXPORT_TRACEPOINT_SYMBOL(io_write);
+
+void do_trace_io_read(const char *type, void *addr)
+{
+	trace_io_read(type, raw_smp_processor_id(), sched_clock(), addr,
+		      _RET_IP_);
+}
+EXPORT_SYMBOL(do_trace_io_read);
+EXPORT_TRACEPOINT_SYMBOL(io_read);
+#endif

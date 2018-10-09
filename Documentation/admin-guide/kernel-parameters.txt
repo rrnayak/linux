@@ -4808,6 +4808,27 @@
 			frequency tracepoints such as irq or sched, can cause
 			the system to live lock.
 
+	tp_pstore[FTRACE]
+			Have the tracepoints sent to persistent ram buffer for
+			debugging. This is useful for debugging early boot up
+			and other kernel issues where the system hangs or
+			reboots due to some unclocked access or some buggy
+			driver. Instead of spamming the console with unwanted
+			logs, we can send the logs to pstore buffer for further
+			debugging.
+
+			Last occurred events in the pstore log will be helpful
+			in identifying the reset cause.
+
+			For example, to trace sched event, add to the command
+			line:
+				trace_event=sched tp_pstore
+
+			To turn off having tracepoints sent to pstore,
+				echo 0 > /proc/sys/kernel/tracepoint_pstore
+			Note, echoing 1 into this file without the
+			tracepoint_pstore kernel cmdline option has no effect.
+
 	traceoff_on_warning
 			[FTRACE] enable this option to disable tracing when a
 			warning is hit. This turns off "tracing_on". Tracing can

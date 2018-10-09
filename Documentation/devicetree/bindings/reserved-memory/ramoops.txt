@@ -14,8 +14,8 @@ Any remaining space will be used for a circular buffer of oops and panic
 records.  These records have a configurable size, with a size of 0 indicating
 that they should be disabled.
 
-At least one of "record-size", "console-size", "ftrace-size", or "pmsg-size"
-must be set non-zero, but are otherwise optional as listed below.
+At least one of "record-size", "console-size", "event-size", "ftrace-size", or
+"pmsg-size" must be set non-zero, but are otherwise optional as listed below.
 
 
 Required properties:
@@ -34,6 +34,9 @@ Optional properties:
   (defaults to 0: disabled)
 
 - console-size: size in bytes of log buffer reserved for kernel messages
+  (defaults to 0: disabled)
+
+- event-size: size in bytes of log buffer reserved for trace events
   (defaults to 0: disabled)
 
 - ftrace-size: size in bytes of log buffer reserved for function tracing and
