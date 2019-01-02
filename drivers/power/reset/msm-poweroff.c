@@ -8,6 +8,7 @@
 #include <linux/kernel.h>
 #include <linux/io.h>
 #include <linux/of.h>
+#include <linux/of_address.h>
 #include <linux/platform_device.h>
 #include <linux/mfd/syscon.h>
 #include <linux/module.h>
@@ -19,10 +20,16 @@ static bool download_mode = IS_ENABLED(CONFIG_POWER_RESET_MSM_DOWNLOAD_MODE);
 module_param(download_mode, bool, 0);
 
 #define QCOM_SET_DLOAD_MODE 0x10
+#ifdef CONFIG_RANDOMIZE_BASE
+#define KASLR_OFFSET_PROP "qcom,msm-imem-kaslr_offset"
+#endif
 static void __iomem *msm_ps_hold;
 static void __iomem *msm_reset_debug;
 static struct regmap *tcsr_regmap;
 static unsigned int dload_mode_offset;
+#ifdef CONFIG_RANDOMIZE_BASE
+static void *kaslr_imem_addr;
+#endif
 
 static int deassert_pshold(struct notifier_block *nb, unsigned long action,
 			   void *data)
@@ -49,6 +56,9 @@ static int msm_restart_probe(struct platform_device *pdev)
 	struct of_phandle_args args;
 	struct device *dev = &pdev->dev;
 	struct resource *mem;
+#ifdef CONFIG_RANDOMIZE_BASE
+	struct device_node *np;
+#endif
 
 	if (download_mode) {
 		ret = of_parse_phandle_with_fixed_args(dev->of_node,
@@ -69,6 +79,27 @@ static int msm_restart_probe(struct platform_device *pdev)
 			     QCOM_SET_DLOAD_MODE);
 	}
 
+#ifdef CONFIG_RANDOMIZE_BASE
+#define KASLR_OFFSET_BIT_MASK	0x00000000FFFFFFFF
+	np = of_find_compatible_node(NULL, NULL, KASLR_OFFSET_PROP);
+	if (!np) {
+		pr_err("unable to find DT imem KASLR_OFFSET node\n");
+	} else {
+		kaslr_imem_addr = of_iomap(np, 0);
+		if (!kaslr_imem_addr)
+			pr_err("unable to map imem KASLR offset\n");
+	}
+
+	if (kaslr_imem_addr) {
+		__raw_writel(0xdead4ead, kaslr_imem_addr);
+		__raw_writel(KASLR_OFFSET_BIT_MASK &
+		(kimage_vaddr - KIMAGE_VADDR), kaslr_imem_addr + 4);
+		__raw_writel(KASLR_OFFSET_BIT_MASK &
+			((kimage_vaddr - KIMAGE_VADDR) >> 32),
+			kaslr_imem_addr + 8);
+		iounmap(kaslr_imem_addr);
+	}
+#endif
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	msm_ps_hold = devm_ioremap_resource(dev, mem);
 	if (IS_ERR(msm_ps_hold))
@@ -113,4 +144,4 @@ static int __init msm_restart_init(void)
 {
 	return platform_driver_register(&msm_restart_driver);
 }
-device_initcall(msm_restart_init);
+pure_initcall(msm_restart_init);
