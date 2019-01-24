@@ -709,16 +709,22 @@ int dev_pm_opp_set_rate(struct device *dev, unsigned long target_freq)
 	struct clk *clk;
 	int ret;
 
-	if (unlikely(!target_freq)) {
-		dev_err(dev, "%s: Invalid target frequency %lu\n", __func__,
-			target_freq);
-		return -EINVAL;
-	}
-
 	opp_table = _find_opp_table(dev);
 	if (IS_ERR(opp_table)) {
 		dev_err(dev, "%s: device opp doesn't exist\n", __func__);
 		return PTR_ERR(opp_table);
+	}
+
+	if (unlikely(!target_freq)) {
+		if (opp_table->required_opp_tables) {
+			/* drop the performance state vote */
+			dev_pm_genpd_set_performance_state(dev, 0);
+			return 0;
+		} else {
+			dev_err(dev, "%s: Invalid target frequency %lu\n", __func__,
+				target_freq);
+			return -EINVAL;
+		}
 	}
 
 	clk = opp_table->clk;
