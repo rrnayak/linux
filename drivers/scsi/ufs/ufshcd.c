@@ -8044,7 +8044,7 @@ int ufshcd_runtime_suspend(struct ufs_hba *hba)
 	ktime_t start = ktime_get();
 
 	if (!hba)
-		return -EINVAL;
+		return 0;
 
 	if (!hba->is_powered)
 		goto out;
@@ -8085,7 +8085,7 @@ int ufshcd_runtime_resume(struct ufs_hba *hba)
 	ktime_t start = ktime_get();
 
 	if (!hba)
-		return -EINVAL;
+		return 0;
 
 	if (!hba->is_powered)
 		goto out;
