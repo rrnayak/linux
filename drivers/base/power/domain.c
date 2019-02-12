@@ -2461,14 +2461,13 @@ struct device *genpd_dev_pm_attach_by_id(struct device *dev,
 	}
 
 	/* Try to attach the device to the PM domain at the specified index. */
-	ret = __genpd_dev_pm_attach(virt_dev, dev->of_node, index, false);
+	ret = __genpd_dev_pm_attach(virt_dev, dev->of_node, index, true);
 	if (ret < 1) {
 		device_unregister(virt_dev);
 		return ret ? ERR_PTR(ret) : NULL;
 	}
 
 	pm_runtime_enable(virt_dev);
-	genpd_queue_power_off_work(dev_to_genpd(virt_dev));
 
 	return virt_dev;
 }
