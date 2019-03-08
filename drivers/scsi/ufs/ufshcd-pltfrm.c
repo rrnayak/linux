@@ -430,6 +430,7 @@ int ufshcd_pltfrm_init(struct platform_device *pdev,
 		goto dealloc_host;
 	}
 
+	pm_runtime_get_noresume(&pdev->dev);
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 
@@ -442,12 +443,14 @@ int ufshcd_pltfrm_init(struct platform_device *pdev,
 	}
 
 	platform_set_drvdata(pdev, hba);
+	pm_runtime_put_noidle(&pdev->dev);
 
 	return 0;
 
 out_disable_rpm:
 	pm_runtime_disable(&pdev->dev);
 	pm_runtime_set_suspended(&pdev->dev);
+	pm_runtime_put_noidle(&pdev->dev);
 dealloc_host:
 	ufshcd_dealloc_host(hba);
 out:
