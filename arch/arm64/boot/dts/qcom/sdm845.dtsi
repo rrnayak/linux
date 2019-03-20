@@ -1803,6 +1803,21 @@
 			qcom,bcm-voters = <&apps_bcm_voter>;
 		};
 
+		ufs_opp_table: ufs-opp-table {
+			compatible = "operating-points-v2";
+
+			opp-50000000 {
+				opp-hz = /bits/ 64 <50000000>;
+				required-opps = <&rpmhpd_opp_min_svs>;
+			};
+
+			opp-200000000 {
+				opp-hz = /bits/ 64 <200000000>;
+				required-opps = <&rpmhpd_opp_nom>;
+
+			};
+		};
+
 		ufs_mem_hc: ufshc@1d84000 {
 			compatible = "qcom,sdm845-ufshc", "qcom,ufshc",
 				     "jedec,ufs-2.0";
@@ -1811,7 +1826,8 @@
 			phys = <&ufs_mem_phy_lanes>;
 			phy-names = "ufsphy";
 			lanes-per-direction = <2>;
-			power-domains = <&gcc UFS_PHY_GDSC>;
+			power-domains = <&gcc UFS_PHY_GDSC>, <&rpmhpd SDM845_CX>;
+			power-domain-names = "gdsc_pd", "rpmh_pd";
 			#reset-cells = <1>;
 			resets = <&gcc GCC_UFS_PHY_BCR>;
 			reset-names = "rst";
@@ -1836,6 +1852,9 @@
 				<&gcc GCC_UFS_PHY_TX_SYMBOL_0_CLK>,
 				<&gcc GCC_UFS_PHY_RX_SYMBOL_0_CLK>,
 				<&gcc GCC_UFS_PHY_RX_SYMBOL_1_CLK>;
+
+			operating-points-v2 = <&ufs_opp_table>;
+
 			freq-table-hz =
 				<50000000 200000000>,
 				<0 0>,
