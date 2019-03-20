@@ -15,6 +15,7 @@
 #include <linux/debugfs.h>
 #include <linux/errno.h>
 #include <linux/mutex.h>
+#include <linux/pm_opp.h>
 #include <linux/sort.h>
 #include <linux/clk.h>
 #include <linux/bitmap.h>
@@ -298,7 +299,11 @@ static int _dpu_core_perf_set_core_clk_rate(struct dpu_kms *kms, u64 rate)
 		rate = core_clk->max_rate;
 
 	core_clk->rate = rate;
-	return msm_dss_clk_set_rate(core_clk, 1);
+
+	if (dev_pm_opp_get_opp_table(&kms->pdev->dev))
+		return dev_pm_opp_set_rate(&kms->pdev->dev, core_clk->rate);
+	else
+		return msm_dss_clk_set_rate(core_clk, 1);
 }
 
 static u64 _dpu_core_perf_get_core_clk_rate(struct dpu_kms *kms)
