@@ -541,6 +541,9 @@ struct ufs_hba {
 
 	struct Scsi_Host *host;
 	struct device *dev;
+	struct device *gdsc_virt_dev;
+	struct device *opp_virt_dev;
+
 	/*
 	 * This field is to keep a reference to "scsi_device" corresponding to
 	 * "UFS device" W-LU.
