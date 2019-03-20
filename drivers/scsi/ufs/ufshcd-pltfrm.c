@@ -34,6 +34,7 @@
  */
 
 #include <linux/platform_device.h>
+#include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
 #include <linux/of.h>
 
@@ -282,6 +283,43 @@ static void ufshcd_init_lanes_per_dir(struct ufs_hba *hba)
 	}
 }
 
+static int ufshcd_attach_pds(struct device *dev, struct ufs_hba *hba, int num_pds)
+{
+	int i, ret;
+
+	hba->virt_devs = devm_kzalloc(dev, sizeof(struct device *) * num_pds,
+				      GFP_KERNEL);
+	if (!hba->virt_devs)
+		return -ENOMEM;
+
+	hba->num_virt_devs = num_pds;
+	for (i = 0; i < num_pds; i++) {
+		hba->virt_devs[i] = dev_pm_domain_attach_by_id(dev, i);
+		if (IS_ERR(hba->virt_devs[i])) {
+			ret = PTR_ERR(hba->virt_devs[i]);
+			goto unroll_attach;
+		}
+		device_link_add(dev,hba->virt_devs[i], DL_FLAG_RPM_ACTIVE |
+				DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+	}
+
+	return ret;
+
+unroll_attach:
+	for (i--; i >= 0; i--)
+		dev_pm_domain_detach(hba->virt_devs[i], false);
+
+	return ret;
+}
+
+static void ufshcd_detach_pds(struct ufs_hba *hba)
+{
+	int i;
+
+	for (i = 0; i < hba->num_virt_devs; i++)
+		dev_pm_domain_detach(hba->virt_devs[i], false);
+}
+
 /**
  * ufshcd_get_pwr_dev_param - get finally agreed attributes for
  *                            power mode change
@@ -392,7 +430,7 @@ int ufshcd_pltfrm_init(struct platform_device *pdev,
 	struct ufs_hba *hba;
 	void __iomem *mmio_base;
 	struct resource *mem_res;
-	int irq, err;
+	int irq, err, num_pds;
 	struct device *dev = &pdev->dev;
 
 	mem_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -430,6 +468,16 @@ int ufshcd_pltfrm_init(struct platform_device *pdev,
 		goto dealloc_host;
 	}
 
+	num_pds = of_count_phandle_with_args(dev->of_node, "power-domains",
+					     "#power-domain-cells");
+	if (num_pds > 1) {
+		err = ufshcd_attach_pds(&pdev->dev, hba, num_pds);
+		if (err) {
+			dev_err(&pdev->dev, "%s: attach of power domains failed %d\n",
+				__func__, err);
+			goto dealloc_host;
+		}
+	}
 	pm_runtime_get_noresume(&pdev->dev);
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
@@ -448,6 +496,8 @@ int ufshcd_pltfrm_init(struct platform_device *pdev,
 	return 0;
 
 out_disable_rpm:
+	if (num_pds > 1)
+		ufshcd_detach_pds(hba);
 	pm_runtime_disable(&pdev->dev);
 	pm_runtime_set_suspended(&pdev->dev);
 	pm_runtime_put_noidle(&pdev->dev);
