@@ -24,6 +24,7 @@ enum geni_se_protocol_type {
 
 struct geni_wrapper;
 struct clk;
+struct opp_table;
 
 /**
  * struct geni_se - GENI Serial Engine
@@ -39,6 +40,7 @@ struct geni_se {
 	struct device *dev;
 	struct geni_wrapper *wrapper;
 	struct clk *clk;
+	struct opp_table *opp;
 	unsigned int num_clk_levels;
 	unsigned long *clk_perf_tbl;
 };
