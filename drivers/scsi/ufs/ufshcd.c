@@ -874,6 +874,16 @@ static int ufshcd_scale_clks(struct ufs_hba *hba, bool scale_up)
 	if (ret)
 		return ret;
 
+	if (hba->opp_virt_dev) {
+		struct dev_pm_opp *opp;
+		unsigned long freq = scale_up ? INT_MAX: 0;
+		if (scale_up)
+			opp = dev_pm_opp_find_freq_floor(hba->dev, &freq);
+		else
+			opp = dev_pm_opp_find_freq_ceil(hba->dev, &freq);
+		dev_pm_opp_set_rate(hba->dev, dev_pm_opp_get_freq(opp));
+	}
+
 	list_for_each_entry(clki, head, list) {
 		if (!IS_ERR_OR_NULL(clki->clk)) {
 			if (scale_up && clki->max_freq) {
@@ -1304,8 +1314,11 @@ static int ufshcd_devfreq_init(struct ufs_hba *hba)
 		return 0;
 
 	clki = list_first_entry(clk_list, struct ufs_clk_info, list);
-	dev_pm_opp_add(hba->dev, clki->min_freq, 0);
-	dev_pm_opp_add(hba->dev, clki->max_freq, 0);
+
+	if (dev_pm_opp_of_add_table(hba->dev)) {
+		dev_pm_opp_add(hba->dev, clki->min_freq, 0);
+		dev_pm_opp_add(hba->dev, clki->max_freq, 0);
+	}
 
 	devfreq = devfreq_add_device(hba->dev,
 			&ufs_devfreq_profile,
