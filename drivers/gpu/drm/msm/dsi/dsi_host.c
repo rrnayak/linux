@@ -14,6 +14,7 @@
 #include <linux/of_graph.h>
 #include <linux/of_irq.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/pm_opp.h>
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
 #include <linux/spinlock.h>
@@ -505,7 +506,7 @@ int msm_dsi_runtime_resume(struct device *dev)
 	return dsi_bus_clk_enable(msm_host);
 }
 
-int dsi_link_clk_enable_6g(struct msm_dsi_host *msm_host)
+static int dsi_link_clk_set_rate_6g(struct msm_dsi_host *msm_host)
 {
 	int ret;
 
@@ -515,29 +516,65 @@ int dsi_link_clk_enable_6g(struct msm_dsi_host *msm_host)
 	ret = clk_set_rate(msm_host->byte_clk, msm_host->byte_clk_rate);
 	if (ret) {
 		pr_err("%s: Failed to set rate byte clk, %d\n", __func__, ret);
-		goto error;
+		return ret;
 	}
 
 	ret = clk_set_rate(msm_host->pixel_clk, msm_host->pixel_clk_rate);
 	if (ret) {
 		pr_err("%s: Failed to set rate pixel clk, %d\n", __func__, ret);
-		goto error;
+		return ret;
 	}
 
 	if (msm_host->byte_intf_clk) {
 		ret = clk_set_rate(msm_host->byte_intf_clk,
 				   msm_host->byte_clk_rate / 2);
-		if (ret) {
+		if (ret)
 			pr_err("%s: Failed to set rate byte intf clk, %d\n",
 			       __func__, ret);
-			goto error;
-		}
 	}
+
+	return ret;
+}
+
+static int dsi_link_clk_set_rate_6g_v2(struct msm_dsi_host *msm_host)
+{
+	int ret;
+	struct device *dev = &msm_host->pdev->dev;
+
+	DBG("Set clk rates: pclk=%d, byteclk=%d",
+		msm_host->mode->clock, msm_host->byte_clk_rate);
+
+	ret = dev_pm_opp_set_rate(dev, msm_host->byte_clk_rate);
+	if (ret) {
+		pr_err("%s: dev_pm_opp_set_rate failed %d\n", __func__, ret);
+		return ret;
+	}
+
+	ret = clk_set_rate(msm_host->pixel_clk, msm_host->pixel_clk_rate);
+	if (ret) {
+		pr_err("%s: Failed to set rate pixel clk, %d\n", __func__, ret);
+		return ret;
+	}
+
+	if (msm_host->byte_intf_clk) {
+		ret = clk_set_rate(msm_host->byte_intf_clk,
+				msm_host->byte_clk_rate / 2);
+		if (ret)
+			pr_err("%s: Failed to set rate byte intf clk, %d\n",
+			       __func__, ret);
+	}
+
+	return ret;
+}
+
+static int dsi_link_clk_prepare_enable_6g(struct msm_dsi_host *msm_host)
+{
+	int ret;
 
 	ret = clk_prepare_enable(msm_host->esc_clk);
 	if (ret) {
 		pr_err("%s: Failed to enable dsi esc clk\n", __func__);
-		goto error;
+		return ret;
 	}
 
 	ret = clk_prepare_enable(msm_host->byte_clk);
@@ -569,8 +606,29 @@ pixel_clk_err:
 	clk_disable_unprepare(msm_host->byte_clk);
 byte_clk_err:
 	clk_disable_unprepare(msm_host->esc_clk);
-error:
 	return ret;
+}
+
+int dsi_link_clk_enable_6g(struct msm_dsi_host *msm_host)
+{
+	int ret;
+
+	ret = dsi_link_clk_set_rate_6g(msm_host);
+	if (ret)
+		return ret;
+
+	return dsi_link_clk_prepare_enable_6g(msm_host);
+}
+
+int dsi_link_clk_enable_6g_v2(struct msm_dsi_host *msm_host)
+{
+	int ret;
+
+	ret = dsi_link_clk_set_rate_6g_v2(msm_host);
+	if (ret)
+		return ret;
+
+	return dsi_link_clk_prepare_enable_6g(msm_host);
 }
 
 int dsi_link_clk_enable_v2(struct msm_dsi_host *msm_host)
@@ -648,6 +706,13 @@ void dsi_link_clk_disable_6g(struct msm_dsi_host *msm_host)
 	if (msm_host->byte_intf_clk)
 		clk_disable_unprepare(msm_host->byte_intf_clk);
 	clk_disable_unprepare(msm_host->byte_clk);
+}
+
+void dsi_link_clk_disable_6g_v2(struct msm_dsi_host *msm_host)
+{
+	/* Drop the performance state vote */
+	dev_pm_opp_set_rate(&msm_host->pdev->dev, 0);
+	dsi_link_clk_disable_6g(msm_host);
 }
 
 void dsi_link_clk_disable_v2(struct msm_dsi_host *msm_host)
@@ -1856,6 +1921,9 @@ int msm_dsi_host_init(struct msm_dsi *msm_dsi)
 		goto fail;
 	}
 
+	dev_pm_opp_set_clkname(&pdev->dev, "byte");
+	dev_pm_opp_of_add_table(&pdev->dev);
+
 	msm_host->rx_buf = devm_kzalloc(&pdev->dev, SZ_4K, GFP_KERNEL);
 	if (!msm_host->rx_buf) {
 		ret = -ENOMEM;
@@ -1888,6 +1956,7 @@ void msm_dsi_host_destroy(struct mipi_dsi_host *host)
 	struct msm_dsi_host *msm_host = to_msm_dsi_host(host);
 
 	DBG("");
+	dev_pm_opp_of_remove_table(&msm_host->pdev->dev);
 	dsi_tx_buf_free(msm_host);
 	if (msm_host->workqueue) {
 		flush_workqueue(msm_host->workqueue);
