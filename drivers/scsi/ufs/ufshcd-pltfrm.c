@@ -34,8 +34,10 @@
  */
 
 #include <linux/platform_device.h>
+#include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
 #include <linux/of.h>
+#include <linux/pm_opp.h>
 
 #include "ufshcd.h"
 #include "ufshcd-pltfrm.h"
@@ -282,6 +284,44 @@ static void ufshcd_init_lanes_per_dir(struct ufs_hba *hba)
 	}
 }
 
+static int ufshcd_attach_pds(struct device *dev, struct ufs_hba *hba, int num_pds)
+{
+	struct opp_table *opp;
+	struct device **opp_virt_dev;
+	const char *opp_pds[] = { "rpmh_pd", NULL };
+
+	if (num_pds > 2)
+		return -EINVAL;
+
+	/* Attach the power domain for on/off control */
+	hba->gdsc_virt_dev = dev_pm_domain_attach_by_name(dev, "gdsc_pd");
+	if (IS_ERR(hba->gdsc_virt_dev))
+		return PTR_ERR(hba->gdsc_virt_dev);
+
+	device_link_add(dev,hba->gdsc_virt_dev, DL_FLAG_RPM_ACTIVE |
+			DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+
+
+	/* Attach the power domain for setting performance state */
+	opp = dev_pm_opp_attach_genpd(dev, opp_pds, &opp_virt_dev);
+	if (IS_ERR(opp))
+		return PTR_ERR(opp);
+	else if (opp_virt_dev) {
+		hba->opp_virt_dev = *opp_virt_dev;
+
+		device_link_add(dev,hba->opp_virt_dev, DL_FLAG_RPM_ACTIVE |
+				DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+	}
+
+	return 0;
+}
+
+static void ufshcd_detach_pds(struct ufs_hba *hba)
+{
+	dev_pm_domain_detach(hba->gdsc_virt_dev, false);
+	dev_pm_domain_detach(hba->opp_virt_dev, false);
+}
+
 /**
  * ufshcd_get_pwr_dev_param - get finally agreed attributes for
  *                            power mode change
@@ -391,7 +431,7 @@ int ufshcd_pltfrm_init(struct platform_device *pdev,
 {
 	struct ufs_hba *hba;
 	void __iomem *mmio_base;
-	int irq, err;
+	int irq, err, num_pds;
 	struct device *dev = &pdev->dev;
 
 	mmio_base = devm_platform_ioremap_resource(pdev, 0);
@@ -429,10 +469,21 @@ int ufshcd_pltfrm_init(struct platform_device *pdev,
 
 	ufshcd_init_lanes_per_dir(hba);
 
+	num_pds = of_count_phandle_with_args(dev->of_node, "power-domains",
+					     "#power-domain-cells");
+	if (num_pds > 1) {
+		err = ufshcd_attach_pds(&pdev->dev, hba, num_pds);
+		if (err) {
+			dev_err(&pdev->dev, "%s: attach of power domains failed %d\n",
+				__func__, err);
+			goto dealloc_host;
+		}
+	}
+
 	err = ufshcd_init(hba, mmio_base, irq);
 	if (err) {
 		dev_err(dev, "Initialization failed\n");
-		goto dealloc_host;
+		goto detach_pds;
 	}
 
 	platform_set_drvdata(pdev, hba);
@@ -442,6 +493,9 @@ int ufshcd_pltfrm_init(struct platform_device *pdev,
 
 	return 0;
 
+detach_pds:
+	if (num_pds > 1)
+		ufshcd_detach_pds(hba);
 dealloc_host:
 	ufshcd_dealloc_host(hba);
 out:
