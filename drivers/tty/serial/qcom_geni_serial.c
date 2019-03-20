@@ -12,6 +12,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/pm_opp.h>
 #include <linux/platform_device.h>
 #include <linux/qcom-geni-se.h>
 #include <linux/serial.h>
@@ -115,6 +116,7 @@ struct qcom_geni_serial_port {
 	bool brk;
 
 	unsigned int tx_remaining;
+	struct device *dev;
 };
 
 static const struct uart_ops qcom_geni_console_pops;
@@ -968,7 +970,7 @@ static void qcom_geni_serial_set_termios(struct uart_port *uport,
 		goto out_restart_rx;
 
 	uport->uartclk = clk_rate;
-	clk_set_rate(port->se.clk, clk_rate);
+	dev_pm_opp_set_rate(port->dev, clk_rate);
 	ser_clk_cfg = SER_CLK_EN;
 	ser_clk_cfg |= clk_div << CLK_DIV_SHFT;
 
@@ -1205,8 +1207,10 @@ static void qcom_geni_serial_pm(struct uart_port *uport,
 	if (new_state == UART_PM_STATE_ON && old_state == UART_PM_STATE_OFF)
 		geni_se_resources_on(&port->se);
 	else if (new_state == UART_PM_STATE_OFF &&
-			old_state == UART_PM_STATE_ON)
+			old_state == UART_PM_STATE_ON) {
+		dev_pm_opp_set_rate(port->dev, 0);
 		geni_se_resources_off(&port->se);
+	}
 }
 
 static const struct uart_ops qcom_geni_console_pops = {
@@ -1272,6 +1276,7 @@ static int qcom_geni_serial_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Invalid line %d\n", line);
 		return PTR_ERR(port);
 	}
+	port->dev = &pdev->dev;
 
 	uport = &port->uport;
 	/* Don't allow 2 drivers to access the same port */
@@ -1292,6 +1297,9 @@ static int qcom_geni_serial_probe(struct platform_device *pdev)
 	if (!res)
 		return -EINVAL;
 	uport->mapbase = res->start;
+
+	dev_pm_opp_set_clkname(&pdev->dev, "se");
+	dev_pm_opp_of_add_table(&pdev->dev);
 
 	port->tx_fifo_depth = DEF_FIFO_DEPTH_WORDS;
 	port->rx_fifo_depth = DEF_FIFO_DEPTH_WORDS;
