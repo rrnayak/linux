@@ -173,6 +173,16 @@ The Hexagon node may also have an subnode named either "smd-edge" or
 related to the Hexagon.  See ../soc/qcom/qcom,smd.txt and
 ../soc/qcom/qcom,glink.txt for details on how to describe these.
 
+- iommus:
+	Useage: required
+	Value type: <prop-encoded-array>
+	Definition: A list of SMMU phandle and SMMU specifier pairs.
+
+On platforms which do not have secure code controlling access control
+the Hexagon node should have a subnode name "crypto-engine" that
+describes the iommu property of modem sub-system's crypto engine.
+See ../iommu/iommu.txt for details.
+
 = EXAMPLE
 The following example describes the resources needed to boot control the
 Hexagon, as it is found on MSM8974 boards.

@@ -10,6 +10,7 @@
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
+#include <linux/iommu.h>
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/mfd/syscon.h>
@@ -194,6 +195,7 @@ struct q6v5 {
 	struct qcom_rproc_glink glink_subdev;
 	struct qcom_rproc_subdev smd_subdev;
 	struct qcom_rproc_ssr ssr_subdev;
+	struct platform_device *crypto_pdev;
 	struct qcom_sysmon *sysmon;
 	bool need_mem_protection;
 	bool has_alt_reset;
@@ -1493,6 +1495,9 @@ static int q6v5_probe(struct platform_device *pdev)
 	struct q6v5 *qproc;
 	struct rproc *rproc;
 	const char *mba_image;
+	struct device_node *np;
+	struct platform_device_info info;
+	struct platform_device *crypto_pdev = NULL;
 	int ret;
 
 	desc = of_device_get_match_data(&pdev->dev);
@@ -1615,12 +1620,54 @@ static int q6v5_probe(struct platform_device *pdev)
 		goto detach_proxy_pds;
 	}
 
+	/* Set SIDs to S2CR BYPASS in no-ac case*/
+	np = of_get_child_by_name(pdev->dev.of_node, "crypto-engine");
+	if (np) {
+		memset(&info, 0, sizeof(info));
+		info.fwnode = &np->fwnode;
+		info.parent = &pdev->dev;
+		info.name = np->name;
+		qproc->crypto_pdev = platform_device_register_full(&info);
+		if (IS_ERR(qproc->crypto_pdev)) {
+			ret = PTR_ERR(qproc->crypto_pdev);
+			goto put_crypto_np;
+		}
+
+		crypto_pdev = qproc->crypto_pdev;
+		crypto_pdev->dev.of_node = np;
+
+		ret = of_dma_configure(&crypto_pdev->dev, np, true);
+		if (ret) {
+			dev_err(&pdev->dev, "dma configure fail\n");
+			goto unregister_child_pdev;
+		}
+
+		ret = iommu_request_dm_for_dev(&crypto_pdev->dev);
+		if (ret) {
+			dev_err(&pdev->dev, "iommu request dm failed : %d\n", ret);
+			goto unregister_child_pdev;
+		}
+		of_node_put(np);
+	}
+
 	ret = rproc_add(rproc);
-	if (ret)
-		goto detach_proxy_pds;
+	if (ret) {
+		if (crypto_pdev)
+			goto detach_iommu;
+		else
+			goto detach_proxy_pds;
+	}
 
 	return 0;
 
+detach_iommu:
+	if (crypto_pdev) {
+		iommu_group_remove_device(&crypto_pdev->dev);
+	}
+unregister_child_pdev:
+	platform_device_unregister(crypto_pdev);
+put_crypto_np:
+	of_node_put(np);
 detach_proxy_pds:
 	q6v5_pds_detach(qproc, qproc->proxy_pds, qproc->proxy_pd_count);
 detach_active_pds:
@@ -1634,8 +1681,14 @@ free_rproc:
 static int q6v5_remove(struct platform_device *pdev)
 {
 	struct q6v5 *qproc = platform_get_drvdata(pdev);
+	struct platform_device *crypto_pdev = qproc->crypto_pdev;
 
 	rproc_del(qproc->rproc);
+
+	if (crypto_pdev) {
+		iommu_group_remove_device(&crypto_pdev->dev);
+		platform_device_unregister(crypto_pdev);
+	}
 
 	qcom_remove_sysmon_subdev(qproc->sysmon);
 	qcom_remove_glink_subdev(qproc->rproc, &qproc->glink_subdev);

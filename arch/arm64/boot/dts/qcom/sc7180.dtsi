@@ -1482,6 +1482,16 @@
 					<&rpmhpd SC7180_MSS>;
 			power-domain-names = "load_state", "cx", "mx", "mss";
 
+			crypto-engine {
+				// WAR: temporarily set the missing SIDS from this node
+				// MODEM:	(0x460-0x461)
+				// IPA:		(0x444-0x446)
+				// WLAN:	(0xc2-0xc3)
+				iommus = <&apps_smmu 0x460 0x1>,
+					 <&apps_smmu 0x444 0x3>,
+					 <&apps_smmu 0xc2 0x1>;
+			};
+
 			mba {
 				memory-region = <&mba_mem>;
 			};
