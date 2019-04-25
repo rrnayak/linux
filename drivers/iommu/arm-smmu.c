@@ -2008,6 +2008,7 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 	struct arm_smmu_device *smmu;
 	struct device *dev = &pdev->dev;
 	int num_irqs, i, err;
+	struct regulator *disp_regulator;
 
 	smmu = devm_kzalloc(dev, sizeof(*smmu), GFP_KERNEL);
 	if (!smmu) {
@@ -2015,6 +2016,13 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 	smmu->dev = dev;
+
+	if (of_device_is_compatible(dev->of_node, "qcom,sdm845-smmu-500")) {
+		disp_regulator = devm_regulator_get(dev, "disp");
+		if (IS_ERR(disp_regulator))
+			pr_err("*************** can't get disp regulator*********\n");
+		regulator_disable(disp_regulator);
+	}
 
 	if (dev->of_node)
 		err = arm_smmu_device_dt_probe(pdev, smmu);
