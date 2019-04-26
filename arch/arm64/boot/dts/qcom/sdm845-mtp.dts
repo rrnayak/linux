@@ -10,6 +10,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
 #include "sdm845.dtsi"
+#include "pmi8998.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. SDM845 MTP";
@@ -372,6 +373,8 @@
 		compatible = "truly,nt35597-2K-display";
 		reg = <0>;
 		vdda-supply = <&vreg_l14a_1p88>;
+		vdispp-supply = <&lab_regulator>;
+		vdispn-supply = <&ibb_regulator>;
 
 		reset-gpios = <&tlmm 6 GPIO_ACTIVE_LOW>;
 		mode-gpios = <&tlmm 52 GPIO_ACTIVE_HIGH>;
