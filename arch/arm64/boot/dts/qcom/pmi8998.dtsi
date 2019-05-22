@@ -25,5 +25,23 @@
 		reg = <0x3 SPMI_USID>;
 		#address-cells = <1>;
 		#size-cells = <0>;
+
+		labibb: qcom-lab-ibb-regulator {
+			compatible = "qcom,lab-ibb-regulator";
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			ibb_regulator: qcom,ibb@dc00 {
+				reg = <0xdc00>;
+				reg-names = "ibb";
+				regulator-name = "ibb_reg";
+			};
+
+			lab_regulator: qcom,lab@de00 {
+				reg = <0xde00>;
+				reg-names = "lab";
+				regulator-name = "lab_reg";
+			};
+		};
 	};
 };
