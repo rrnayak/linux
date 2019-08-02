@@ -21,6 +21,7 @@
 
 #include <uapi/linux/psci.h>
 
+#include <asm/cacheflush.h>
 #include <asm/cpuidle.h>
 #include <asm/cputype.h>
 #include <asm/system_misc.h>
@@ -261,6 +262,8 @@ static int get_set_conduit_method(struct device_node *np)
 
 static void psci_sys_reset(enum reboot_mode reboot_mode, const char *cmd)
 {
+	flush_cache_all();
+
 	if ((reboot_mode == REBOOT_WARM || reboot_mode == REBOOT_SOFT) &&
 	    psci_system_reset2_supported) {
 		/*
