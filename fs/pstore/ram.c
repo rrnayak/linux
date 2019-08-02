@@ -25,6 +25,8 @@
 #define RAMOOPS_KERNMSG_HDR "===="
 #define MIN_MEM_SIZE 4096UL
 
+#define EVENT_SIZE 0x20000
+
 static ulong record_size = MIN_MEM_SIZE;
 module_param(record_size, ulong, 0400);
 MODULE_PARM_DESC(record_size,
@@ -714,6 +716,7 @@ static int ramoops_parse_dt(struct platform_device *pdev,
 
 #define parse_size(name, field) {					\
 		ret = ramoops_parse_dt_size(pdev, name, &value);	\
+		pdata->event_size = EVENT_SIZE;				\
 		if (ret < 0)						\
 			return ret;					\
 		field = value;						\
