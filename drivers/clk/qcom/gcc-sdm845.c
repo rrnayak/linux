@@ -3254,6 +3254,7 @@ static struct gdsc hlos1_vote_aggre_noc_mmu_audio_tbu_gdsc = {
 	.pd = {
 		.name = "hlos1_vote_aggre_noc_mmu_audio_tbu_gdsc",
 	},
+	.flags = VOTABLE,
 	.pwrsts = PWRSTS_OFF_ON,
 };
 
@@ -3262,6 +3263,7 @@ static struct gdsc hlos1_vote_aggre_noc_mmu_pcie_tbu_gdsc = {
 	.pd = {
 		.name = "hlos1_vote_aggre_noc_mmu_pcie_tbu_gdsc",
 	},
+	.flags = VOTABLE,
 	.pwrsts = PWRSTS_OFF_ON,
 };
 
@@ -3270,6 +3272,7 @@ static struct gdsc hlos1_vote_aggre_noc_mmu_tbu1_gdsc = {
 	.pd = {
 		.name = "hlos1_vote_aggre_noc_mmu_tbu1_gdsc",
 	},
+	.flags = VOTABLE,
 	.pwrsts = PWRSTS_OFF_ON,
 };
 
@@ -3278,6 +3281,7 @@ static struct gdsc hlos1_vote_aggre_noc_mmu_tbu2_gdsc = {
 	.pd = {
 		.name = "hlos1_vote_aggre_noc_mmu_tbu2_gdsc",
 	},
+	.flags = VOTABLE,
 	.pwrsts = PWRSTS_OFF_ON,
 };
 
@@ -3286,6 +3290,7 @@ static struct gdsc hlos1_vote_mmnoc_mmu_tbu_hf0_gdsc = {
 	.pd = {
 		.name = "hlos1_vote_mmnoc_mmu_tbu_hf0_gdsc",
 	},
+	.flags = VOTABLE,
 	.pwrsts = PWRSTS_OFF_ON,
 };
 
@@ -3294,6 +3299,7 @@ static struct gdsc hlos1_vote_mmnoc_mmu_tbu_hf1_gdsc = {
 	.pd = {
 		.name = "hlos1_vote_mmnoc_mmu_tbu_hf1_gdsc",
 	},
+	.flags = VOTABLE,
 	.pwrsts = PWRSTS_OFF_ON,
 };
 
@@ -3302,6 +3308,7 @@ static struct gdsc hlos1_vote_mmnoc_mmu_tbu_sf_gdsc = {
 	.pd = {
 		.name = "hlos1_vote_mmnoc_mmu_tbu_sf_gdsc",
 	},
+	.flags = VOTABLE,
 	.pwrsts = PWRSTS_OFF_ON,
 };
 
