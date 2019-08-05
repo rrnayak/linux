@@ -286,6 +286,7 @@ static void ufshcd_init_lanes_per_dir(struct ufs_hba *hba)
 
 static int ufshcd_attach_pds(struct device *dev, struct ufs_hba *hba, int num_pds)
 {
+	struct opp_table *opp;
 	struct device **opp_virt_dev;
 	const char *opp_pds[] = { "rpmh_pd", NULL };
 
@@ -302,8 +303,10 @@ static int ufshcd_attach_pds(struct device *dev, struct ufs_hba *hba, int num_pd
 
 
 	/* Attach the power domain for setting performance state */
-	dev_pm_opp_attach_genpd(dev, opp_pds, &opp_virt_dev);
-	if (opp_virt_dev) {
+	opp = dev_pm_opp_attach_genpd(dev, opp_pds, &opp_virt_dev);
+	if (IS_ERR(opp))
+		return PTR_ERR(opp);
+	else if (opp_virt_dev) {
 		hba->opp_virt_dev = *opp_virt_dev;
 
 		device_link_add(dev,hba->opp_virt_dev, DL_FLAG_RPM_ACTIVE |
