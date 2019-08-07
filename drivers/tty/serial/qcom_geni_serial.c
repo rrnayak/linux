@@ -1298,9 +1298,6 @@ static int qcom_geni_serial_probe(struct platform_device *pdev)
 		return -EINVAL;
 	uport->mapbase = res->start;
 
-	dev_pm_opp_set_clkname(&pdev->dev, "se");
-	dev_pm_opp_of_add_table(&pdev->dev);
-
 	port->tx_fifo_depth = DEF_FIFO_DEPTH_WORDS;
 	port->rx_fifo_depth = DEF_FIFO_DEPTH_WORDS;
 	port->tx_fifo_width = DEF_FIFO_WIDTH_BITS;
@@ -1309,6 +1306,9 @@ static int qcom_geni_serial_probe(struct platform_device *pdev)
 	if (irq < 0)
 		return irq;
 	uport->irq = irq;
+
+	dev_pm_opp_set_clkname(&pdev->dev, "se");
+	dev_pm_opp_of_add_table(&pdev->dev);
 
 	uport->private_data = drv;
 	platform_set_drvdata(pdev, port);

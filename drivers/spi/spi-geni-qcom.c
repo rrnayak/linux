@@ -602,6 +602,7 @@ spi_geni_probe_free_irq:
 	free_irq(mas->irq, spi);
 spi_geni_probe_runtime_disable:
 	pm_runtime_disable(&pdev->dev);
+	dev_pm_opp_of_remove_table(&pdev->dev);
 	spi_master_put(spi);
 	return ret;
 }
