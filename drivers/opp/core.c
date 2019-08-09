@@ -1060,8 +1060,11 @@ static void _opp_table_kref_release(struct kref *kref)
 	_of_clear_opp_table(opp_table);
 
 	/* Release clk */
-	if (!IS_ERR(opp_table->clk))
+	if (!IS_ERR(opp_table->clk)) {
+		printk("%s clk_put %x\n", __func__, opp_table->clk);
 		clk_put(opp_table->clk);
+		opp_table->clk = ERR_PTR(-EINVAL);
+	}
 
 	WARN_ON(!list_empty(&opp_table->opp_list));
 
@@ -1762,8 +1765,11 @@ void dev_pm_opp_put_clkname(struct opp_table *opp_table)
 	/* Make sure there are no concurrent readers while updating opp_table */
 	WARN_ON(!list_empty(&opp_table->opp_list));
 
-	clk_put(opp_table->clk);
-	opp_table->clk = ERR_PTR(-EINVAL);
+	if (!IS_ERR(opp_table->clk)) {
+		printk("%s clk_put %x\n", __func__, opp_table->clk);
+		clk_put(opp_table->clk);
+		opp_table->clk = ERR_PTR(-EINVAL);
+	}
 
 	dev_pm_opp_put_opp_table(opp_table);
 }

@@ -1006,15 +1006,15 @@ static int dpu_bind(struct device *dev, struct device *master, void *data)
 	if (!dpu_kms)
 		return -ENOMEM;
 
-	dev_pm_opp_set_clkname(dev, "core");
-	dev_pm_opp_of_add_table(dev);
-
 	mp = &dpu_kms->mp;
 	ret = msm_dss_parse_clock(pdev, mp);
 	if (ret) {
 		DPU_ERROR("failed to parse clocks, ret=%d\n", ret);
 		return ret;
 	}
+
+	dpu_kms->opp = dev_pm_opp_set_clkname(dev, "core");
+	dev_pm_opp_of_add_table(dev);
 
 	platform_set_drvdata(pdev, dpu_kms);
 
@@ -1035,6 +1035,7 @@ static void dpu_unbind(struct device *dev, struct device *master, void *data)
 	struct dpu_kms *dpu_kms = platform_get_drvdata(pdev);
 	struct dss_module_power *mp = &dpu_kms->mp;
 
+	dev_pm_opp_put_clkname(dpu_kms->opp);
 	dev_pm_opp_of_remove_table(dev);
 	msm_dss_put_clk(mp->clk_config, mp->num_clk);
 	devm_kfree(&pdev->dev, mp->clk_config);

@@ -123,6 +123,8 @@ struct msm_dsi_host {
 
 	u32 src_clk_rate;
 
+	struct opp_table *opp;
+
 	struct gpio_desc *disp_en_gpio;
 	struct gpio_desc *te_gpio;
 
@@ -1921,7 +1923,7 @@ int msm_dsi_host_init(struct msm_dsi *msm_dsi)
 		goto fail;
 	}
 
-	dev_pm_opp_set_clkname(&pdev->dev, "byte");
+	msm_host->opp = dev_pm_opp_set_clkname(&pdev->dev, "byte");
 	dev_pm_opp_of_add_table(&pdev->dev);
 
 	msm_host->rx_buf = devm_kzalloc(&pdev->dev, SZ_4K, GFP_KERNEL);
@@ -1956,6 +1958,7 @@ void msm_dsi_host_destroy(struct mipi_dsi_host *host)
 	struct msm_dsi_host *msm_host = to_msm_dsi_host(host);
 
 	DBG("");
+	dev_pm_opp_put_clkname(msm_host->opp);
 	dev_pm_opp_of_remove_table(&msm_host->pdev->dev);
 	dsi_tx_buf_free(msm_host);
 	if (msm_host->workqueue) {

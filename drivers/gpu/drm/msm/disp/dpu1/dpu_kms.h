@@ -122,6 +122,7 @@ struct dpu_kms {
 	struct platform_device *pdev;
 	bool rpm_enabled;
 	struct dss_module_power mp;
+	struct opp_table *opp;
 
 	/* reference count bandwidth requests, so we know when we can
 	 * release bandwidth.  Each atomic update increments, and frame-
