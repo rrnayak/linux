@@ -216,6 +216,16 @@ static inline int adreno_is_a540(struct adreno_gpu *gpu)
 	return gpu->revn == 540;
 }
 
+static inline int adreno_is_a618(struct adreno_gpu *gpu)
+{
+       return gpu->revn == 618;
+}
+
+static inline int adreno_is_a630(struct adreno_gpu *gpu)
+{
+       return gpu->revn == 630;
+}
+
 int adreno_get_param(struct msm_gpu *gpu, uint32_t param, uint64_t *value);
 const struct firmware *adreno_request_fw(struct adreno_gpu *adreno_gpu,
 		const char *fwname);
