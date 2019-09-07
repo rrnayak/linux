@@ -969,10 +969,10 @@ static void q6v5_mba_reclaim(struct q6v5 *qproc)
 
 	q6v5_reset_assert(qproc);
 
-	q6v5_clk_disable(qproc->dev, qproc->reset_clks,
-			 qproc->reset_clk_count);
 	q6v5_clk_disable(qproc->dev, qproc->active_clks,
 			 qproc->active_clk_count);
+	q6v5_clk_disable(qproc->dev, qproc->reset_clks,
+			 qproc->reset_clk_count);
 	q6v5_regulator_disable(qproc, qproc->active_regs,
 			       qproc->active_reg_count);
 	q6v5_pds_disable(qproc, qproc->active_pds, qproc->active_pd_count);
@@ -1681,7 +1681,7 @@ static const struct rproc_hexagon_res sc7180_mss = {
 		"mss",
 		NULL
 	},
-	.need_mem_protection = true,
+	.need_mem_protection = false,
 	.has_alt_reset = false,
 	.has_halt_nav = true,
 	.version = MSS_SC7180,
