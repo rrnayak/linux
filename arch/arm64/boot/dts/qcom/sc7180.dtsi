@@ -71,6 +71,12 @@
 			no-map;
 		};
 
+                wlan_fw_mem: wlan_fw_region@93900000 {
+                        compatible = "removed-dma-pool";
+                        no-map;
+                        reg = <0 0x93900000 0 0x200000>;
+                };
+
 		mba_mem: memory@94400000 {
 			reg = <0x0 0x94400000 0x0 0x200000>;
 			no-map;
@@ -1331,6 +1337,28 @@
 				compatible = "qcom,sc7180-bcm-voter";
 			};
 		};
+
+                wifi: wifi@18800000 {
+                           status = "okay";
+                           compatible = "qcom,wcn3990-wifi";
+                           reg = <0 0x18800000 0 0x800000>;
+                           reg-names = "membase";
+                           interrupts =
+                                   <GIC_SPI 414 IRQ_TYPE_LEVEL_HIGH /* CE0 */ >,
+                                   <GIC_SPI 415 IRQ_TYPE_LEVEL_HIGH /* CE1 */ >,
+                                   <GIC_SPI 416 IRQ_TYPE_LEVEL_HIGH /* CE2 */ >,
+                                   <GIC_SPI 417 IRQ_TYPE_LEVEL_HIGH /* CE3 */ >,
+                                   <GIC_SPI 418 IRQ_TYPE_LEVEL_HIGH /* CE4 */ >,
+                                   <GIC_SPI 419 IRQ_TYPE_LEVEL_HIGH /* CE5 */ >,
+                                   <GIC_SPI 420 IRQ_TYPE_LEVEL_HIGH /* CE6 */ >,
+                                   <GIC_SPI 421 IRQ_TYPE_LEVEL_HIGH /* CE7 */ >,
+                                   <GIC_SPI 422 IRQ_TYPE_LEVEL_HIGH /* CE8 */ >,
+                                   <GIC_SPI 423 IRQ_TYPE_LEVEL_HIGH /* CE9 */ >,
+                                   <GIC_SPI 424 IRQ_TYPE_LEVEL_HIGH /* CE10 */>,
+                                   <GIC_SPI 425 IRQ_TYPE_LEVEL_HIGH /* CE11 */>;
+                           memory-region = <&wlan_fw_mem>;
+                           qcom,msa_fixed_perm="false";
+                 };
 
 		config_noc: interconnect@1500000 {
 			compatible = "qcom,sc7180-config_noc";
