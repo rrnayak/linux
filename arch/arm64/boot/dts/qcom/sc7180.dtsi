@@ -1197,7 +1197,7 @@
 				data {
 					pins = "sdc1_data";
 					bias-pull-up;
-					dreive-strength = <10>;
+					drive-strength = <10>;
 				};
 
 				rclk {
@@ -1222,7 +1222,7 @@
 				data {
 					pins = "sdc1_data";
 					bias-pull-up;
-					dreive-strength = <2>;
+					drive-strength = <2>;
 				};
 
 				rclk {
