@@ -30,6 +30,7 @@ conditions.
                   Qcom SoCs implementing "arm,mmu-500" must also include,
                   as below, SoC-specific compatibles:
                   "qcom,sdm845-smmu-500", "arm,mmu-500"
+                  "qcom,sc7180-smmu-500", "arm,mmu-500"
 
 - reg           : Base address and size of the SMMU.
 
