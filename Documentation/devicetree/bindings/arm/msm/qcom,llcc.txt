@@ -11,7 +11,9 @@ Properties:
 - compatible:
 	Usage: required
 	Value type: <string>
-	Definition: must be "qcom,sdm845-llcc"
+	Definition: must be one of:
+		    "qcom,sc7180-llcc",
+		    "qcom,sdm845-llcc"
 
 - reg:
 	Usage: required
