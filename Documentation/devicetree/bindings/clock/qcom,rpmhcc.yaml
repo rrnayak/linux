@@ -19,6 +19,7 @@ properties:
     enum:
        - qcom,sdm845-rpmh-clk
        - qcom,sm8150-rpmh-clk
+       - qcom,sc7180-rpmh-clk
 
   clocks:
     maxItems: 1
