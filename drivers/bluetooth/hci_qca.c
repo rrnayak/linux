@@ -1262,7 +1262,7 @@ static int qca_setup(struct hci_uart *hu)
 		if (ret)
 			return ret;
 
-		ret = qca_read_soc_version(hdev, &soc_ver);
+		ret = qca_read_soc_version(hdev, &soc_ver, soc_type);
 		if (ret)
 			return ret;
 	} else {
@@ -1282,7 +1282,7 @@ static int qca_setup(struct hci_uart *hu)
 
 	if (!qca_is_wcn399x(soc_type)) {
 		/* Get QCA version information */
-		ret = qca_read_soc_version(hdev, &soc_ver);
+		ret = qca_read_soc_version(hdev, &soc_ver, soc_type);
 		if (ret)
 			return ret;
 	}
@@ -1306,9 +1306,7 @@ static int qca_setup(struct hci_uart *hu)
 	}
 
 	/* Setup bdaddr */
-	if (qca_is_wcn399x(soc_type))
-		hu->hdev->set_bdaddr = qca_set_bdaddr;
-	else
+	if (!qca_is_wcn399x(soc_type))
 		hu->hdev->set_bdaddr = qca_set_bdaddr_rome;
 
 	return ret;
@@ -1347,6 +1345,17 @@ static const struct qca_vreg_data qca_soc_data_wcn3998 = {
 		{ "vddxo",   1800000, 1900000,  80000  },
 		{ "vddrf",   1300000, 1352000,  300000 },
 		{ "vddch0",  3300000, 3300000,  450000 },
+	},
+	.num_vregs = 4,
+};
+
+static const struct qca_vreg_data qca_soc_data_wcn3991 = {
+	.soc_type = QCA_WCN3991,
+	.vregs = (struct qca_vreg []) {
+		{ "vddio",   1700000, 1800000,  15000  },
+		{ "vddxo",   1700000, 1800000,  35000  },
+		{ "vddrf",   1245000, 1300000,  120000 },
+		{ "vddch0",  3200000, 3300000,  450000 },
 	},
 	.num_vregs = 4,
 };
@@ -1568,6 +1577,7 @@ static const struct of_device_id qca_bluetooth_of_match[] = {
 	{ .compatible = "qcom,qca6174-bt" },
 	{ .compatible = "qcom,wcn3990-bt", .data = &qca_soc_data_wcn3990},
 	{ .compatible = "qcom,wcn3998-bt", .data = &qca_soc_data_wcn3998},
+	{ .compatible = "qcom,wcn3991-bt", .data = &qca_soc_data_wcn3991},
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, qca_bluetooth_of_match);

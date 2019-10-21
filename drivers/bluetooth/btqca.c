@@ -14,10 +14,11 @@
 
 #define VERSION "0.1"
 
-int qca_read_soc_version(struct hci_dev *hdev, u32 *soc_version)
+int qca_read_soc_version(struct hci_dev *hdev, u32 *soc_version,enum qca_btsoc_type soc_type)
 {
 	struct sk_buff *skb;
-	struct edl_event_hdr *edl;
+        struct edl_event_hdr *edl;
+        struct edl_cc_hdr *edl_unified;
 	struct rome_version *ver;
 	char cmd;
 	int err = 0;
@@ -25,42 +26,79 @@ int qca_read_soc_version(struct hci_dev *hdev, u32 *soc_version)
 	bt_dev_dbg(hdev, "QCA Version Request");
 
 	cmd = EDL_PATCH_VER_REQ_CMD;
-	skb = __hci_cmd_sync_ev(hdev, EDL_PATCH_CMD_OPCODE, EDL_PATCH_CMD_LEN,
-				&cmd, HCI_EV_VENDOR, HCI_INIT_TIMEOUT);
-	if (IS_ERR(skb)) {
+
+	/* WCN3991 sends version request response with CC packet. */
+	if (soc_type == QCA_WCN3991)
+		skb = __hci_cmd_sync(hdev, EDL_PATCH_CMD_OPCODE,
+				     EDL_PATCH_CMD_LEN, &cmd, HCI_INIT_TIMEOUT);
+	else
+		skb = __hci_cmd_sync_ev(hdev, EDL_PATCH_CMD_OPCODE,
+					EDL_PATCH_CMD_LEN, &cmd, HCI_EV_VENDOR,
+					HCI_INIT_TIMEOUT);
+
+        if (IS_ERR(skb)) {
 		err = PTR_ERR(skb);
 		bt_dev_err(hdev, "Reading QCA version information failed (%d)",
 			   err);
 		return err;
 	}
 
-	if (skb->len != sizeof(*edl) + sizeof(*ver)) {
-		bt_dev_err(hdev, "QCA Version size mismatch len %d", skb->len);
-		err = -EILSEQ;
-		goto out;
+	if (soc_type == QCA_WCN3991) {
+		if (skb->len != sizeof(*edl_unified) + sizeof(*ver)) {
+			bt_dev_err(hdev, "QCA Version size mismatch len %d",
+				   skb->len);
+			err = -EILSEQ;
+			goto out;
+		}
+
+		edl_unified = (struct edl_cc_hdr *)(skb->data);
+		if (!edl_unified) {
+			bt_dev_err(hdev, "QCA TLV with no header");
+			err = -EILSEQ;
+			goto out;
+		}
+
+		if (edl_unified->cresp != EDL_CMD_REQ_RES_EVT ||
+		    edl_unified->rtype != EDL_PATCH_VER_REQ_CMD) {
+			bt_dev_err(hdev, "QCA Wrong packet received %d %d",
+				   edl_unified->cresp, edl_unified->rtype);
+			err = -EIO;
+			goto out;
+		}
+
+		ver = (struct rome_version *)(edl_unified->data);
 	}
 
-	edl = (struct edl_event_hdr *)(skb->data);
-	if (!edl) {
-		bt_dev_err(hdev, "QCA TLV with no header");
-		err = -EILSEQ;
-		goto out;
+	else {
+		if (skb->len != sizeof(*edl) + sizeof(*ver)) {
+			bt_dev_err(hdev, "QCA Version size mismatch len %d",
+				   skb->len);
+			err = -EILSEQ;
+			goto out;
+		}
+
+		edl = (struct edl_event_hdr *)(skb->data);
+		if (!edl) {
+			bt_dev_err(hdev, "QCA TLV with no header");
+			err = -EILSEQ;
+			goto out;
+		}
+
+		if (edl->cresp != EDL_CMD_REQ_RES_EVT ||
+		    edl->rtype != EDL_APP_VER_RES_EVT) {
+			bt_dev_err(hdev, "QCA Wrong packet received %d %d",
+				   edl->cresp, edl->rtype);
+			err = -EIO;
+			goto out;
+		}
+
+		ver = (struct rome_version *)(edl->data);
 	}
 
-	if (edl->cresp != EDL_CMD_REQ_RES_EVT ||
-	    edl->rtype != EDL_APP_VER_RES_EVT) {
-		bt_dev_err(hdev, "QCA Wrong packet received %d %d", edl->cresp,
-			   edl->rtype);
-		err = -EIO;
-		goto out;
-	}
-
-	ver = (struct rome_version *)(edl->data);
-
-	BT_DBG("%s: Product:0x%08x", hdev->name, le32_to_cpu(ver->product_id));
-	BT_DBG("%s: Patch  :0x%08x", hdev->name, le16_to_cpu(ver->patch_ver));
-	BT_DBG("%s: ROM    :0x%08x", hdev->name, le16_to_cpu(ver->rome_ver));
-	BT_DBG("%s: SOC    :0x%08x", hdev->name, le32_to_cpu(ver->soc_id));
+	BT_INFO("%s: Product:0x%08x", hdev->name, le32_to_cpu(ver->product_id));
+	BT_INFO("%s: Patch  :0x%08x", hdev->name, le16_to_cpu(ver->patch_ver));
+	BT_INFO("%s: ROM    :0x%08x", hdev->name, le16_to_cpu(ver->rome_ver));
+	BT_INFO("%s: SOC    :0x%08x", hdev->name, le32_to_cpu(ver->soc_id));
 
 	/* QCA chipset version can be decided by patch and SoC
 	 * version, combination with upper 2 bytes from SoC
@@ -223,7 +261,8 @@ static void qca_tlv_check_data(struct rome_config *config,
 }
 
 static int qca_tlv_send_segment(struct hci_dev *hdev, int seg_size,
-				 const u8 *data, enum rome_tlv_dnld_mode mode)
+				 const u8 *data, enum rome_tlv_dnld_mode mode,
+				 enum qca_btsoc_type soc_type)
 {
 	struct sk_buff *skb;
 	struct edl_event_hdr *edl;
@@ -238,35 +277,63 @@ static int qca_tlv_send_segment(struct hci_dev *hdev, int seg_size,
 	if (mode == ROME_SKIP_EVT_VSE_CC || mode == ROME_SKIP_EVT_VSE)
 		return __hci_cmd_send(hdev, EDL_PATCH_CMD_OPCODE, seg_size + 2,
 				      cmd);
+	if (soc_type == QCA_WCN3991)
+		skb = __hci_cmd_sync(hdev, EDL_PATCH_CMD_OPCODE, seg_size + 2,
+				     cmd, HCI_INIT_TIMEOUT);
 
-	skb = __hci_cmd_sync_ev(hdev, EDL_PATCH_CMD_OPCODE, seg_size + 2, cmd,
-				HCI_EV_VENDOR, HCI_INIT_TIMEOUT);
+	else
+		skb = __hci_cmd_sync_ev(hdev, EDL_PATCH_CMD_OPCODE,
+					seg_size + 2, cmd, HCI_EV_VENDOR,
+					HCI_INIT_TIMEOUT);
 	if (IS_ERR(skb)) {
 		err = PTR_ERR(skb);
 		bt_dev_err(hdev, "QCA Failed to send TLV segment (%d)", err);
 		return err;
 	}
 
-	if (skb->len != sizeof(*edl) + sizeof(*tlv_resp)) {
-		bt_dev_err(hdev, "QCA TLV response size mismatch");
-		err = -EILSEQ;
-		goto out;
+	if (soc_type == QCA_WCN3991) {
+		if (skb->len != sizeof(*edl)) {
+			bt_dev_err(hdev, "QCA TLV response size mismatch");
+			err = -EILSEQ;
+			goto out;
+		}
+
+		edl = (struct edl_event_hdr *)(skb->data);
+		if (!edl) {
+			bt_dev_err(hdev, "TLV with no header");
+			err = -EILSEQ;
+			goto out;
+		}
+
+		if (edl->cresp != EDL_CMD_REQ_RES_EVT ||
+		    edl->rtype != EDL_PATCH_TLV_REQ_CMD) {
+			bt_dev_err(hdev, "QCA TLV with error stat 0x%x rtype 0x%x",
+				   edl->cresp, edl->rtype);
+			err = -EIO;
+		}
 	}
+	else {
+		if (skb->len != sizeof(*edl) + sizeof(*tlv_resp)) {
+			bt_dev_err(hdev, "QCA TLV response size mismatch");
+			err = -EILSEQ;
+			goto out;
+		}
 
-	edl = (struct edl_event_hdr *)(skb->data);
-	if (!edl) {
-		bt_dev_err(hdev, "TLV with no header");
-		err = -EILSEQ;
-		goto out;
-	}
+		edl = (struct edl_event_hdr *)(skb->data);
+		if (!edl) {
+			bt_dev_err(hdev, "TLV with no header");
+			err = -EILSEQ;
+			goto out;
+		}
 
-	tlv_resp = (struct tlv_seg_resp *)(edl->data);
+		tlv_resp = (struct tlv_seg_resp *)(edl->data);
 
-	if (edl->cresp != EDL_CMD_REQ_RES_EVT ||
-	    edl->rtype != EDL_TVL_DNLD_RES_EVT || tlv_resp->result != 0x00) {
-		bt_dev_err(hdev, "QCA TLV with error stat 0x%x rtype 0x%x (0x%x)",
-			   edl->cresp, edl->rtype, tlv_resp->result);
-		err = -EIO;
+		if (edl->cresp != EDL_CMD_REQ_RES_EVT ||
+		    edl->rtype != EDL_TVL_DNLD_RES_EVT || tlv_resp->result != 0x00) {
+			bt_dev_err(hdev, "QCA TLV with error stat 0x%x rtype 0x%x (0x%x)",
+				   edl->cresp, edl->rtype, tlv_resp->result);
+			err = -EIO;
+		}
 	}
 
 out:
@@ -301,7 +368,8 @@ static int qca_inject_cmd_complete_event(struct hci_dev *hdev)
 }
 
 static int qca_download_firmware(struct hci_dev *hdev,
-				  struct rome_config *config)
+				  struct rome_config *config,
+				  enum qca_btsoc_type soc_type)
 {
 	const struct firmware *fw;
 	const u8 *segment;
@@ -331,7 +399,7 @@ static int qca_download_firmware(struct hci_dev *hdev,
 			config->dnld_mode = ROME_SKIP_EVT_NONE;
 
 		ret = qca_tlv_send_segment(hdev, segsize, segment,
-					    config->dnld_mode);
+					    config->dnld_mode, soc_type);
 		if (ret)
 			goto out;
 
@@ -405,7 +473,7 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
 			 "qca/rampatch_%08x.bin", soc_ver);
 	}
 
-	err = qca_download_firmware(hdev, &config);
+	err = qca_download_firmware(hdev, &config, soc_type);
 	if (err < 0) {
 		bt_dev_err(hdev, "QCA Failed to download patch (%d)", err);
 		return err;
@@ -426,7 +494,7 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
 		snprintf(config.fwname, sizeof(config.fwname),
 			 "qca/nvm_%08x.bin", soc_ver);
 
-	err = qca_download_firmware(hdev, &config);
+	err = qca_download_firmware(hdev, &config, soc_type);
 	if (err < 0) {
 		bt_dev_err(hdev, "QCA Failed to download NVM (%d)", err);
 		return err;
