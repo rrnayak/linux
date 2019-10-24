@@ -6,6 +6,7 @@ Required properties:
 			"qcom,msm8996-dwc3" for msm8996 SOC.
 			"qcom,msm8998-dwc3" for msm8998 SOC.
 			"qcom,sdm845-dwc3" for sdm845 SOC.
+			"qcom,sc7180-dwc3" for sc7180 SOC.
 - reg:			Offset and length of register set for QSCRATCH wrapper
 - power-domains:	specifies a phandle to PM domain provider node
 - clocks:		A list of phandle + clock-specifier pairs for the
