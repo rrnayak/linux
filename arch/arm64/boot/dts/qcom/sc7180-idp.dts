@@ -7,6 +7,7 @@
 
 /dts-v1/;
 
+#include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
 #include "sc7180.dtsi"
 #include "pm6150.dtsi"
@@ -294,4 +295,80 @@
 	status = "okay";
 	vdda-phy-supply = <&vreg_l3c_1p2>;
 	vdda-pll-supply = <&vreg_l4a_0p8>;
+};
+
+&pm6150l_gpios {
+	disp_pins {
+		disp_pins_default: disp_pins_default{
+			pins = "gpio3";
+			function = "func1";
+			qcom,drive-strength = <2>;
+			power-source = <0>;
+			bias-disable;
+			output-low;
+		};
+	};
+};
+
+&dsi0 {
+	status = "okay";
+
+	vdda-supply = <&vreg_l3c_1p2>;
+
+	panel@0 {
+		compatible = "visionox,rm69299-1080p-display";
+		reg = <0>;
+
+		vdda-supply = <&vreg_l8c_1p8>;
+		vdd3p3-supply = <&vreg_l18a_2p8>;
+
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&disp_pins_default>;
+		pinctrl-1 = <&disp_pins_default>;
+
+		reset-gpios = <&pm6150l_gpios 3 0>;
+
+		display-timings {
+			timing0: timing-0 {
+				/* originally
+				 * 268316160 Mhz,
+				 * but value below fits
+				 * better w/ downstream
+				 */
+				clock-frequency = <158695680>;
+				hactive = <1080>;
+				vactive = <2248>;
+				hfront-porch = <26>;
+				hback-porch = <36>;
+				hsync-len = <2>;
+				vfront-porch = <56>;
+				vback-porch = <4>;
+				vsync-len = <4>;
+			};
+		};
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			port@0 {
+				reg = <0>;
+				panel0_in: endpoint {
+					remote-endpoint = <&dsi0_out>;
+				};
+			};
+		};
+	};
+
+	ports {
+		port@1 {
+			endpoint {
+				remote-endpoint = <&panel0_in>;
+				data-lanes = <0 1 2 3>;
+			};
+		};
+	};
+};
+
+&dsi0_phy {
+	status = "okay";
 };
