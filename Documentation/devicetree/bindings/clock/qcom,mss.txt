@@ -1,0 +1,20 @@
+QTI MSS Clock Controller Binding
+--------------------------------
+
+Required properties :
+- compatible : shall contain "qcom,sc7180-mss"
+- #clock-cells: from common clock binding, shall contain 1.
+- reg : shall contain base register address and size, in the order.
+
+optional properties :
+- reg-names : register names of MSS domain
+		"cc".
+
+Example:
+
+	mss: clock-controller@41aa000 {
+		compatible = "qcom,sc7180-mss";
+		reg = <0x041aa000 0x100>;
+		reg-names = "cc";
+		#clock-cells = <1>;
+	};
