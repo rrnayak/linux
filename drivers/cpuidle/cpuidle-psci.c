@@ -29,14 +29,55 @@ struct psci_cpuidle_data {
 };
 
 static DEFINE_PER_CPU_READ_MOSTLY(struct psci_cpuidle_data, psci_cpuidle_data);
+static DEFINE_PER_CPU(u32, domain_state);
+
+static inline void psci_set_domain_state(u32 state)
+{
+	__this_cpu_write(domain_state, state);
+}
+
+static inline u32 psci_get_domain_state(void)
+{
+	return __this_cpu_read(domain_state);
+}
+
+static inline int _psci_enter_state(int idx, u32 state)
+{
+	return CPU_PM_CPU_IDLE_ENTER_PARAM(psci_cpu_suspend_enter, idx, state);
+}
+
+static int psci_enter_domain_state(int idx, struct psci_cpuidle_data *data)
+{
+	int ret;
+	u32 *states = data->psci_states;
+	u32 state = psci_get_domain_state();
+
+	if (!state)
+		state = states[idx];
+
+	ret = _psci_enter_state(idx, state);
+
+	/* Clear the domain state to start fresh when back from idle. */
+	psci_set_domain_state(0);
+	return ret;
+}
+
+static int psci_enter_state(int idx, struct psci_cpuidle_data *data)
+{
+	u32 *states = data->psci_states;
+
+	return _psci_enter_state(idx, states[idx]);
+}
 
 static int psci_enter_idle_state(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv, int idx)
 {
-	u32 *state = __this_cpu_read(psci_cpuidle_data.psci_states);
+	struct psci_cpuidle_data *data = this_cpu_ptr(&psci_cpuidle_data);
 
-	return CPU_PM_CPU_IDLE_ENTER_PARAM(psci_cpu_suspend_enter,
-					   idx, state[idx]);
+	if (!data->dev)
+		return psci_enter_state(idx, data);
+
+	return psci_enter_domain_state(idx, data);
 }
 
 static struct cpuidle_driver psci_idle_driver __initdata = {
