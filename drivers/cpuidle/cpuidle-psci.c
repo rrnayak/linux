@@ -16,6 +16,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/psci.h>
+#include <linux/pm_runtime.h>
 #include <linux/slab.h>
 
 #include <asm/cpuidle.h>
@@ -25,6 +26,7 @@
 
 struct psci_cpuidle_data {
 	u32 *psci_states;
+	u32 rpm_state_id;
 	struct device *dev;
 };
 
@@ -50,12 +52,25 @@ static int psci_enter_domain_state(int idx, struct psci_cpuidle_data *data)
 {
 	int ret;
 	u32 *states = data->psci_states;
-	u32 state = psci_get_domain_state();
+	struct device *pd_dev = data->dev;
+	bool runtime_pm = (pd_dev && data->rpm_state_id == idx);
+	u32 state;
 
+	/*
+	 * Do runtime PM if we are using the hierarchical CPU toplogy, but only
+	 * when cpuidle have selected the deepest idle state for the CPU.
+	 */
+	if (runtime_pm)
+		pm_runtime_put_sync_suspend(pd_dev);
+
+	state = psci_get_domain_state();
 	if (!state)
 		state = states[idx];
 
 	ret = _psci_enter_state(idx, state);
+
+	if (runtime_pm)
+		pm_runtime_get_sync(pd_dev);
 
 	/* Clear the domain state to start fresh when back from idle. */
 	psci_set_domain_state(0);
@@ -160,6 +175,7 @@ static int __init psci_dt_cpu_init_idle(struct device_node *cpu_node,
 	}
 
 	data->dev = dev;
+	data->rpm_state_id = state_count - 1;
 
 	/* Idle states parsed correctly, store them in the per-cpu struct. */
 	data->psci_states = psci_states;
