@@ -175,6 +175,15 @@ config QCOM_SOCINFO
 	 Say yes here to support the Qualcomm socinfo driver, providing
 	 information about the SoC to user space.
 
+config QCOM_SS_SLEEP_STATS
+	tristate "Qualcomm Technologies Inc. Subsystem Sleep Stats driver"
+	depends on QCOM_SMEM
+	help
+	  Say y here to enable support for the Qualcomm Technologies Inc (QTI)
+	  SS sleep stats driver to read the sleep stats of various subsystems
+	  from SMEM. The stats are exported to sysfs. The driver also maintains
+	  application processor sleep stats.
+
 config QCOM_WCNSS_CTRL
 	tristate "Qualcomm WCNSS control driver"
 	depends on ARCH_QCOM || COMPILE_TEST
