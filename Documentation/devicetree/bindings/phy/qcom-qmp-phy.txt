@@ -15,16 +15,19 @@ Required properties:
 	       "qcom,sdm845-qmp-usb3-phy" for USB3 QMP V3 phy on sdm845,
 	       "qcom,sdm845-qmp-usb3-uni-phy" for USB3 QMP V3 UNI phy on sdm845,
 	       "qcom,sdm845-qmp-ufs-phy" for UFS QMP phy on sdm845,
-	       "qcom,sm8150-qmp-ufs-phy" for UFS QMP phy on sm8150.
+	       "qcom,sm8150-qmp-ufs-phy" for UFS QMP phy on sm8150,
+	       "qcom,sc7180-qmp-usb3-phy" for USB3 QMP V3 phy on sc7180.
 
 - reg:
   - index 0: address and length of register set for PHY's common
              serdes block.
   - index 1: address and length of the DP_COM control block (for
-             "qcom,sdm845-qmp-usb3-phy" only).
+             "qcom,sdm845-qmp-usb3-phy" and "qcom,sc7180-qmp-usb3-phy" only).
 
 - reg-names:
   - For "qcom,sdm845-qmp-usb3-phy":
+    - Should be: "reg-base", "dp_com"
+  - For "qcom,sc7180-qmp-usb3-phy":
     - Should be: "reg-base", "dp_com"
   - For all others:
     - The reg-names property shouldn't be defined.
@@ -60,6 +63,8 @@ Required properties:
 			"ref", "ref_aux".
 		For "qcom,sm8150-qmp-ufs-phy" must contain:
 			"ref", "ref_aux".
+		For "qcom,sc7180-qmp-usb3-phy" must contain:
+			"aux", "cfg_ahb", "ref", "com_aux".
 
  - resets: a list of phandles and reset controller specifier pairs,
 	   one for each entry in reset-names.
@@ -88,6 +93,8 @@ Required properties:
 			"ufsphy".
 		For "qcom,sm8150-qmp-ufs-phy": must contain:
 			"ufsphy".
+		For "qcom,sc7180-qmp-usb3-phy" must contain:
+			"phy", "common".
 
  - vdda-phy-supply: Phandle to a regulator supply to PHY core block.
  - vdda-pll-supply: Phandle to 1.8V regulator supply to PHY refclk pll block.
