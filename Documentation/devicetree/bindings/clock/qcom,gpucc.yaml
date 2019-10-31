@@ -18,6 +18,7 @@ properties:
     enum:
       - qcom,sdm845-gpucc
       - qcom,msm8998-gpucc
+      - qcom,sc7180-gpucc
 
   clocks:
     minItems: 1
