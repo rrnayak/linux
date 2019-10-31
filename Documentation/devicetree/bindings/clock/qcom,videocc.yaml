@@ -17,6 +17,7 @@ properties:
   compatible:
     enum:
       - qcom,sdm845-videocc
+      - qcom,sc7180-videocc
 
   clocks:
     maxItems: 1
