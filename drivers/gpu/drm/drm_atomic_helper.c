@@ -2711,7 +2711,7 @@ int drm_atomic_helper_swap_state(struct drm_atomic_state *state,
 			if (!commit)
 				continue;
 
-			ret = wait_for_completion_interruptible(&commit->hw_done);
+			ret = wait_for_completion_interruptible(&commit->cleanup_done);
 			if (ret)
 				return ret;
 		}
@@ -2722,7 +2722,7 @@ int drm_atomic_helper_swap_state(struct drm_atomic_state *state,
 			if (!commit)
 				continue;
 
-			ret = wait_for_completion_interruptible(&commit->hw_done);
+			ret = wait_for_completion_interruptible(&commit->cleanup_done);
 			if (ret)
 				return ret;
 		}
@@ -2733,7 +2733,7 @@ int drm_atomic_helper_swap_state(struct drm_atomic_state *state,
 			if (!commit)
 				continue;
 
-			ret = wait_for_completion_interruptible(&commit->hw_done);
+			ret = wait_for_completion_interruptible(&commit->cleanup_done);
 			if (ret)
 				return ret;
 		}
