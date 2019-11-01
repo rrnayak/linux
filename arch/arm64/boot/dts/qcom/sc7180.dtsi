@@ -472,6 +472,41 @@
 			#interrupt-cells = <2>;
 			gpio-ranges = <&tlmm 0 0 120>;
 
+			qspi_clk: qspi-clk {
+				pinmux {
+					pins = "gpio63";
+					function = "qspi_clk";
+				};
+			};
+
+			qspi_cs0: qspi-cs0 {
+				pinmux {
+					pins = "gpio68";
+					function = "qspi_cs";
+				};
+			};
+
+			qspi_cs1: qspi-cs1 {
+				pinmux {
+					pins = "gpio72";
+					function = "qspi_cs";
+				};
+			};
+
+			qspi_data01: qspi-data01 {
+				pinmux-data {
+					pins = "gpio64", "gpio65";
+					function = "qspi_data";
+				};
+			};
+
+			qspi_data12: qspi-data12 {
+				pinmux-data {
+					pins = "gpio66", "gpio67";
+					function = "qspi_data";
+				};
+			};
+
 			qup_uart10_default: qup-uart10-default {
 				pinmux {
 					pins = "gpio44", "gpio45";
@@ -726,6 +761,18 @@
 			#reset-cells = <1>;
 			#power-domain-cells = <1>;
 		};
+
+		qspi: spi@88dc000 {
+			compatible = "qcom,sc7180-qspi", "qcom,qspi-v1";
+			reg = <0 0x088dc000 0 0x600>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			interrupts = <GIC_SPI 119 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&gcc GCC_QSPI_CNOC_PERIPH_AHB_CLK>,
+			         <&gcc GCC_QSPI_CORE_CLK>;
+			clock-names = "iface", "core";
+			status = "disabled";
+                };
 
 		usb_1_hsphy: phy@88e3000 {
 			compatible = "qcom,sc7180-qusb2-phy";
