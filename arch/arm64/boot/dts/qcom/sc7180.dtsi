@@ -437,6 +437,11 @@
 			#thermal-sensor-cells = <1>;
 		};
 
+		rpmh_sleep_stats: soc-sleep-stats@c3f0000 {
+			compatible = "qcom,rpmh-sleep-stats";
+			reg = <0 0xc3f0000 0 0x400>;
+		};
+
 		spmi_bus: spmi@c440000 {
 			compatible = "qcom,spmi-pmic-arb";
 			reg = <0 0xc440000 0 0x1100>,
