@@ -63,11 +63,12 @@ properties:
     description:
       Set this flag to force EHCI reset after resume.
 
-  phys:
-    description: PHY specifier for the USB PHY
+  companion:
+    $ref: /schemas/types.yaml#/definitions/phandle
+    description:
+     Phandle of a companion.
 
-  phy-names:
-    const: usb
+  phys: true
 
 required:
   - compatible
