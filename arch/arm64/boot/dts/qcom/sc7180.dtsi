@@ -640,6 +640,25 @@
 			};
 		};
 
+		sdhc_2: sdhci@8804000 {
+			compatible = "qcom,sdhci-msm-v5";
+			reg = <0 0x08804000 0 0x1000>;
+			reg-names = "hc_mem";
+			iommus = <&apps_smmu 0x80 0x0>;
+
+			interrupts = <GIC_SPI 204 IRQ_TYPE_LEVEL_HIGH>,
+						<GIC_SPI 222 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "hc_irq", "pwr_irq";
+
+			clocks = <&gcc GCC_SDCC2_APPS_CLK>,
+					<&gcc GCC_SDCC2_AHB_CLK>;
+			clock-names = "core","iface";
+
+			bus-width = <4>;
+
+			status = "disabled";
+		};
+
 		qupv3_id_1: geniqup@ac0000 {
 			compatible = "qcom,geni-se-qup";
 			reg = <0 0x00ac0000 0 0x6000>;
@@ -1209,6 +1228,50 @@
 				rclk {
 					pins = "sdc1_rclk";
 					bias-pull-down;
+				};
+			};
+
+			sdc2_on: sdc2_on {
+				clk {
+					pins = "sdc2_clk";
+					bias-disable;
+					drive-strength = <16>;
+				};
+				cmd {
+					pins = "sdc2_cmd";
+					bias-pull-up;
+					drive-strength = <10>;
+				};
+				data {
+					pins = "sdc2_data";
+					bias-pull-up;
+					drive-strength = <10>;
+				};
+				sd-cd-odl {
+						pins = "gpio69";
+						bias-pull-down;
+				};
+			};
+
+			sdc2_off: sdc2_off {
+				clk {
+					pins = "sdc2_clk";
+					bias-disable;
+					drive-strength = <2>;
+				};
+				cmd {
+					pins = "sdc2_cmd";
+					bias-pull-up;
+					drive-strength = <2>;
+				};
+				data {
+					pins = "sdc2_data";
+					bias-pull-up;
+					drive-strength = <2>;
+				};
+				sd-cd-odl {
+						pins = "gpio69";
+						bias-pull-down;
 				};
 			};
 		};

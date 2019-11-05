@@ -190,9 +190,9 @@
 		};
 
 		vreg_l6c_2p9: ldo6 {
-			regulator-min-microvolt = <2696000>;
+			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <3304000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_LPM>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vreg_l7c_3p0: ldo7 {
@@ -210,7 +210,7 @@
 		vreg_l9c_2p9: ldo9 {
 			regulator-min-microvolt = <2952000>;
 			regulator-max-microvolt = <3304000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_LPM>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vreg_l10c_3p3: ldo10 {
@@ -385,6 +385,18 @@
 	/delete-property/ mmc-hs200-1_8v;
 	/delete-property/ mmc-hs400-1_8v;
 	/delete-property/ mmc-hs400-enhanced-strobe;
+};
+
+&sdhc_2 {
+	status = "ok";
+
+	pinctrl-names = "default","sleep";
+	pinctrl-0 = <&sdc2_on>;
+	pinctrl-1 = <&sdc2_off>;
+	vmmc-supply  = <&vreg_l9c_2p9>;
+	vqmmc-supply = <&vreg_l6c_2p9>;
+
+	cd-gpios = <&tlmm 69 GPIO_ACTIVE_LOW>;
 };
 
 &usb_1 {
