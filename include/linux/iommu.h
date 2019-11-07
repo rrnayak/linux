@@ -86,6 +86,7 @@ struct iommu_domain_geometry {
 #define IOMMU_DOMAIN_DMA	(__IOMMU_DOMAIN_PAGING |	\
 				 __IOMMU_DOMAIN_DMA_API)
 
+#define IOMMU_DOMAIN_NAME_LEN 32
 struct iommu_domain {
 	unsigned type;
 	const struct iommu_ops *ops;
@@ -94,6 +95,7 @@ struct iommu_domain {
 	void *handler_token;
 	struct iommu_domain_geometry geometry;
 	void *iova_cookie;
+	char name[IOMMU_DOMAIN_NAME_LEN];
 };
 
 enum iommu_cap {

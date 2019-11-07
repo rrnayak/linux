@@ -24,6 +24,8 @@
 #include <linux/fsl/mc.h>
 #include <trace/events/iommu.h>
 
+#include "iommu-debug.h"
+
 static struct kset *iommu_group_kset;
 static DEFINE_IDA(iommu_group_ida);
 
@@ -1605,6 +1607,8 @@ static struct iommu_domain *__iommu_domain_alloc(struct bus_type *bus,
 	/* Assume all sizes by default; the driver may override this later */
 	domain->pgsize_bitmap  = bus->iommu_ops->pgsize_bitmap;
 
+	memset(domain->name, 0, IOMMU_DOMAIN_NAME_LEN);
+
 	return domain;
 }
 
@@ -1616,6 +1620,7 @@ EXPORT_SYMBOL_GPL(iommu_domain_alloc);
 
 void iommu_domain_free(struct iommu_domain *domain)
 {
+	iommu_debug_domain_remove(domain);
 	domain->ops->domain_free(domain);
 }
 EXPORT_SYMBOL_GPL(iommu_domain_free);
@@ -1632,8 +1637,17 @@ static int __iommu_attach_device(struct iommu_domain *domain,
 		return -ENODEV;
 
 	ret = domain->ops->attach_dev(domain, dev);
-	if (!ret)
+	if (!ret) {
 		trace_attach_device_to_domain(dev);
+
+		if (!strnlen(domain->name, IOMMU_DOMAIN_NAME_LEN)) {
+			strlcpy(domain->name, dev_name(dev),
+				IOMMU_DOMAIN_NAME_LEN);
+		}
+
+		iommu_debug_attach_device(domain, dev);
+	}
+
 	return ret;
 }
 
