@@ -10,6 +10,7 @@
 #include <linux/arm-smccc.h>
 #include <linux/cpuidle.h>
 #include <linux/errno.h>
+#include <linux/io.h>
 #include <linux/linkage.h>
 #include <linux/of.h>
 #include <linux/pm.h>
@@ -262,6 +263,14 @@ static int get_set_conduit_method(struct device_node *np)
 
 static void psci_sys_reset(enum reboot_mode reboot_mode, const char *cmd)
 {
+#if IS_ENABLED(CONFIG_POWER_RESET_MSM_DOWNLOAD_MODE)
+	writel(0, dload_imem_addr);
+#endif
+
+#if IS_ENABLED(CONFIG_POWER_RESET_MSM)
+	writel(1, msm_reset_debug);
+#endif
+
 	flush_cache_all();
 
 	if ((reboot_mode == REBOOT_WARM || reboot_mode == REBOOT_SOFT) &&

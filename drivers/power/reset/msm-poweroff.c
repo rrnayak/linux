@@ -10,25 +10,23 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
-#include <linux/mfd/syscon.h>
 #include <linux/module.h>
 #include <linux/reboot.h>
-#include <linux/regmap.h>
 #include <linux/pm.h>
 
-static bool download_mode = IS_ENABLED(CONFIG_POWER_RESET_MSM_DOWNLOAD_MODE);
-module_param(download_mode, bool, 0);
+static void __iomem *msm_ps_hold;
 
-#define QCOM_SET_DLOAD_MODE 0x10
+void __iomem *msm_reset_debug;
+EXPORT_SYMBOL_GPL(msm_reset_debug);
+
 #ifdef CONFIG_RANDOMIZE_BASE
 #define KASLR_OFFSET_PROP "qcom,msm-imem-kaslr_offset"
+static void __iomem *kaslr_imem_addr;
 #endif
-static void __iomem *msm_ps_hold;
-static void __iomem *msm_reset_debug;
-static struct regmap *tcsr_regmap;
-static unsigned int dload_mode_offset;
-#ifdef CONFIG_RANDOMIZE_BASE
-static void *kaslr_imem_addr;
+
+#ifdef CONFIG_POWER_RESET_MSM_DOWNLOAD_MODE
+void __iomem *dload_imem_addr;
+EXPORT_SYMBOL_GPL(dload_imem_addr);
 #endif
 
 static int deassert_pshold(struct notifier_block *nb, unsigned long action,
@@ -52,32 +50,11 @@ static void do_msm_poweroff(void)
 
 static int msm_restart_probe(struct platform_device *pdev)
 {
-	int ret;
-	struct of_phandle_args args;
 	struct device *dev = &pdev->dev;
 	struct resource *mem;
-#ifdef CONFIG_RANDOMIZE_BASE
+#if defined(CONFIG_RANDOMIZE_BASE) || defined(CONFIG_POWER_RESET_MSM_DOWNLOAD_MODE)
 	struct device_node *np;
 #endif
-
-	if (download_mode) {
-		ret = of_parse_phandle_with_fixed_args(dev->of_node,
-						       "qcom,dload-mode", 1, 0,
-						       &args);
-		if (ret < 0)
-			return ret;
-
-		tcsr_regmap = syscon_node_to_regmap(args.np);
-		of_node_put(args.np);
-		if (IS_ERR(tcsr_regmap))
-			return PTR_ERR(tcsr_regmap);
-
-		dload_mode_offset = args.args[0];
-
-		/* Enable download mode by writing the cookie */
-		regmap_write(tcsr_regmap, dload_mode_offset,
-			     QCOM_SET_DLOAD_MODE);
-	}
 
 #ifdef CONFIG_RANDOMIZE_BASE
 #define KASLR_OFFSET_BIT_MASK	0x00000000FFFFFFFF
@@ -100,12 +77,27 @@ static int msm_restart_probe(struct platform_device *pdev)
 		iounmap(kaslr_imem_addr);
 	}
 #endif
+#ifdef CONFIG_POWER_RESET_MSM_DOWNLOAD_MODE
+	np = of_find_compatible_node(NULL, NULL, "qcom,msm-imem-dload_mode");
+	if (!np) {
+		dev_err(dev, "unable to find qcom,msm-imem-dload_mode node\n");
+	} else {
+		dload_imem_addr = of_iomap(np, 0);
+		if (!dload_imem_addr)
+			dev_err(dev, "unable to map imem dload addr\n");
+	}
+
+	if (dload_imem_addr) {
+		writel(0xE47B337D, dload_imem_addr);
+		iounmap(dload_imem_addr);
+	}
+#endif
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	msm_ps_hold = devm_ioremap_resource(dev, mem);
 	if (IS_ERR(msm_ps_hold))
 		return PTR_ERR(msm_ps_hold);
 
-	msm_reset_debug = ioremap(0xC2F0000, 0x4);
+	msm_reset_debug = ioremap(0x01ffa000, 0x4);
 	if (!msm_reset_debug)
 		return -ENXIO;
 
@@ -114,15 +106,6 @@ static int msm_restart_probe(struct platform_device *pdev)
 	pm_power_off = do_msm_poweroff;
 
 	return 0;
-}
-
-static void msm_restart_shutdown(struct platform_device *pdev)
-{
-	/* Clean shutdown, disable download mode to allow normal restart */
-	if (download_mode) {
-		regmap_write(tcsr_regmap, dload_mode_offset, 0x0);
-		writel(0, msm_reset_debug);
-	}
 }
 
 static const struct of_device_id of_msm_restart_match[] = {
@@ -137,7 +120,6 @@ static struct platform_driver msm_restart_driver = {
 		.name = "msm-restart",
 		.of_match_table = of_match_ptr(of_msm_restart_match),
 	},
-	.shutdown = msm_restart_shutdown,
 };
 
 static int __init msm_restart_init(void)

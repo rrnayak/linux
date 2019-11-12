@@ -1915,7 +1915,6 @@
 		restart@c264000 {
 			compatible = "qcom,pshold";
 			reg = <0 0x0c264000 0 0x4>;
-			qcom,dload-mode = <&tcsr_regs 0x13000>;
 		};
 
 		tsens1: thermal-sensor@c265000 {
@@ -1967,8 +1966,8 @@
 
 		imem@146aa000 {
 			compatible = "qcom,msm-imem";
-			reg = <0 0x146aa000 0 0x1000>;
-			ranges = <0x0 0x0 0x0 0x146aa000 0x0 0x1000>;
+			reg = <0 0x146aa000 0 0x2000>;
+			ranges = <0x0 0x0 0x0 0x146aa000 0x0 0x2000>;
 			#address-cells = <2>;
 			#size-cells = <2>;
 
@@ -1985,6 +1984,11 @@
 			pil@94c {
 				compatible = "qcom,msm-imem-pil";
 				reg = <0x0 0x94c 0x0 0x4>;
+			};
+
+			dload_mode@1c00 {
+				compatible = "qcom,msm-imem-dload_mode";
+				reg = <0 0x1c00 0 0x4>;
 			};
 		};
 

@@ -22,6 +22,14 @@
 extern void (*pm_power_off)(void);
 extern void (*pm_power_off_prepare)(void);
 
+#ifdef CONFIG_POWER_RESET_MSM
+extern void __iomem *msm_reset_debug;
+#endif
+
+#ifdef CONFIG_POWER_RESET_MSM_DOWNLOAD_MODE
+extern void __iomem *dload_imem_addr;
+#endif
+
 struct device; /* we have a circular dep with device.h */
 #ifdef CONFIG_VT_CONSOLE_SLEEP
 extern void pm_vt_switch_required(struct device *dev, bool required);
