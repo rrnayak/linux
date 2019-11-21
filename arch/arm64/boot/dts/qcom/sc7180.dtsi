@@ -1520,6 +1520,7 @@
 			#clock-cells = <1>;
 		};
 
+/*
 		gpu: gpu@5000000 {
 			compatible = "qcom,adreno-618.0", "qcom,adreno";
 			#stream-id-cells = <16>;
@@ -1632,6 +1633,7 @@
 				};
 			};
 		};
+*/
 
 		gpucc: clock-controller@5090000 {
 			compatible = "qcom,sc7180-gpucc";
