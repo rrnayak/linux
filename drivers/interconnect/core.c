@@ -19,6 +19,9 @@
 #include <linux/of.h>
 #include <linux/overflow.h>
 
+#define CREATE_TRACE_POINTS
+#include "trace.h"
+
 #include "internal.h"
 
 static DEFINE_IDR(icc_idr);
@@ -431,6 +434,8 @@ int icc_set_bw(struct icc_path *path, u32 avg_bw, u32 peak_bw)
 
 		/* aggregate requests for this node */
 		aggregate_requests(node);
+
+		trace_icc_set_bw(path, node, i, avg_bw, peak_bw);
 	}
 
 	ret = apply_constraints(path);
@@ -448,6 +453,8 @@ int icc_set_bw(struct icc_path *path, u32 avg_bw, u32 peak_bw)
 	}
 
 	mutex_unlock(&icc_lock);
+
+	trace_icc_set_bw_end(path, ret);
 
 	return ret;
 }
