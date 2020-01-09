@@ -12,6 +12,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/types.h>
+#include <linux/pm_opp.h>
 #include <linux/pm_runtime.h>
 #include <media/videobuf2-v4l2.h>
 #include <media/v4l2-mem2mem.h>
@@ -250,6 +251,11 @@ static int venus_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	if (core->opp_pmdomain) {
+		core->opp = dev_pm_opp_set_clkname(dev, "core");
+		dev_pm_opp_of_add_table(dev);
+	}
+
 	pm_runtime_enable(dev);
 
 	ret = pm_runtime_get_sync(dev);
@@ -301,6 +307,8 @@ err_core_deinit:
 err_venus_shutdown:
 	venus_shutdown(core);
 err_runtime_disable:
+	if (core->opp_pmdomain)
+		dev_pm_opp_of_remove_table(dev);
 	pm_runtime_set_suspended(dev);
 	pm_runtime_disable(dev);
 	hfi_destroy(core);
@@ -326,6 +334,9 @@ static int venus_remove(struct platform_device *pdev)
 
 	venus_firmware_deinit(core);
 
+	if (core->opp_pmdomain)
+		dev_pm_opp_of_remove_table(dev);
+
 	pm_runtime_put_sync(dev);
 	pm_runtime_disable(dev);
 
@@ -349,6 +360,9 @@ static __maybe_unused int venus_runtime_suspend(struct device *dev)
 	ret = hfi_core_suspend(core);
 	if (ret)
 		return ret;
+
+	if (core->opp_pmdomain)
+		dev_pm_opp_set_rate(dev, 0);
 
 	if (pm_ops->core_power)
 		ret = pm_ops->core_power(dev, POWER_OFF);
@@ -511,6 +525,7 @@ static const struct venus_resources sdm845_res_v2 = {
 	.vcodec_clks_num = 2,
 	.vcodec_pmdomains = { "venus", "vcodec0", "vcodec1" },
 	.vcodec_pmdomains_num = 3,
+	.opp_pmdomain = (const char *[]) { "opp-pd", NULL },
 	.vcodec_num = 2,
 	.max_load = 3110400,	/* 4096x2160@90 */
 	.hfi_version = HFI_VERSION_4XX,
@@ -556,6 +571,7 @@ static const struct venus_resources sc7180_res = {
 	.vcodec_clks_num = 2,
 	.vcodec_pmdomains = { "venus", "vcodec0" },
 	.vcodec_pmdomains_num = 2,
+	.opp_pmdomain = (const char *[]) { "opp-pd", NULL },
 	.vcodec_num = 1,
 	.hfi_version = HFI_VERSION_4XX,
 	.vmem_id = VIDC_RESOURCE_NONE,
